@@ -32,7 +32,7 @@ dependencies {
     implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
     implementation("io.ktor:ktor-client-json-jvm:$ktorVersion")
     implementation("io.ktor:ktor-client-gson:$ktorVersion")
-    implementation("org.koin:koin-ktor:2.1.6")
+    implementation("io.insert-koin:koin-ktor:2.1.6")
     implementation(project(":shared"))
     testImplementation("io.ktor:ktor-server-tests:$ktorVersion")
 }
