@@ -14,8 +14,8 @@ application {
 
 node {
     nodeModulesDir = file("../frontend")
-    version = '14.19.3'
-    distBaseUrl = 'https://direct.nodejs.org/dist/'
+    version = "14.19.3"
+    distBaseUrl = "https://direct.nodejs.org/dist/"
     download = true
 }
 
