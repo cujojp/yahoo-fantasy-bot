@@ -1,0 +1,55 @@
+{
+  "name": "Yahoo Fantasy Bot",
+  "description": "Bot that alerts users about various things happening in their Yahoo Fantasy Sports league.  Can be used with Discord, GroupMe, and Slack",
+  "keywords": [
+    "fantasy football",
+    "yahoo",
+    "groupme",
+    "discord",
+    "slack",
+    "chat bot",
+    "ff"
+  ],
+  "website": "https://github.com/LandonPatmore/yahoo-fantasy-bot",
+  "repository": "https://github.com/LandonPatmore/yahoo-fantasy-bot",
+  "env": {
+    "GROUP_ME_BOT_ID": {
+      "description": "GroupMe Bot ID",
+      "value": "",
+      "required": false
+    },
+    "DISCORD_WEBHOOK_URL": {
+      "description": "Discord Web Hook URL",
+      "value": "",
+      "required": false
+    },
+    "SLACK_WEBHOOK_URL": {
+      "description": "Slack Web Hook URL",
+      "value": "",
+      "required": false
+    },
+    "YAHOO_CLIENT_ID": {
+      "description": "Yahoo Client ID",
+      "value": "",
+      "required": true
+    },
+    "YAHOO_CLIENT_SECRET": {
+      "description": "Yahoo Client Secret",
+      "value": "",
+      "required": true
+    },
+    "YAHOO_GAME_KEY": {
+      "description": "Yahoo Game Key: (NFL, NBA, MLB)",
+      "value": "",
+      "required": true
+    },
+    "YAHOO_LEAGUE_ID": {
+      "description": "Yahoo League ID",
+      "value": "",
+      "required": true
+    }
+  },
+  "addons": [
+    "heroku-postgresql"
+  ]
+}

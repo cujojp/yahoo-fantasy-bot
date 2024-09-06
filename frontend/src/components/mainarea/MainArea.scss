@@ -1,0 +1,35 @@
+#main-area {
+    // background-color: red;
+    display: grid;
+    grid-template-areas:
+    "header header"
+    "alerts alerts";
+    // "alerts leagues"
+    // "messagingServices messageType";
+    grid-gap: 1em;
+}
+
+#dashboard-text {
+    text-align: center;
+    grid-area: header;
+}
+
+// .area-header {
+//     background-color: red;
+// }
+
+.add-area {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.add-button-area {
+    text-align: center;
+}
+
+#auth-button {
+    display: block; 
+    margin: auto;
+}
