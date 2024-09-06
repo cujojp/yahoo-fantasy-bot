@@ -39,8 +39,7 @@ allprojects {
     }
     repositories {
         mavenCentral()
-        jcenter()
-        maven { url 'https://jitpack.io' }
+        maven { url "http://jcenter.bintray.com" }
     }
     compileKotlin {
         kotlinOptions {
