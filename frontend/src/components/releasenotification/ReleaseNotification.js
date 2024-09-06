@@ -47,7 +47,7 @@ class ReleaseNotification extends React.Component {
     }
 
     handleOpenRepo() {
-        window.open('http://github.com/LandonPatmore/yahoo-fantasy-bot','_blank')
+        window.open('http://github.com/cujojp/yahoo-fantasy-bot','_blank')
     }
 
     render() {

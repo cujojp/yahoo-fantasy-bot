@@ -93,8 +93,8 @@ class Arbiter(
                 Message.Generic(
                     """
                         |Thanks for using me!  I will notify you about things happening in your league in real time!
-                        |Star/fork me on Github: https://github.com/LandonPatmore/yahoo-fantasy-bot
-                        |Having issues?: https://github.com/LandonPatmore/yahoo-fantasy-bot/issues
+                        |Star/fork me on Github: https://github.com/cujojp/yahoo-fantasy-bot
+                        |Having issues?: https://github.com/cujojp/yahoo-fantasy-bot/issues
                     """.trimMargin()
                 )
             )

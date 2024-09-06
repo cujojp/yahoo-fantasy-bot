@@ -31,6 +31,6 @@ data class ReleaseInformation(
 ) {
     companion object {
         const val URL =
-            "https://api.github.com/repos/LandonPatmore/yahoo-fantasy-bot/releases/latest"
+            "https://api.github.com/repos/cujojp/yahoo-fantasy-bot/releases/latest"
     }
 }
