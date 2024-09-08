@@ -1,34 +1,39 @@
-import com.moowork.gradle.node.task.NodeTask
-
-val ktorVersion: String by project
-val logbackVersion: String by project
+val ktorVersion = "2.2.3"
+val logbackVersion = "1.2.1"
+val kotlinVersion = "1.8.10"  // Define the Kotlin version for dependencies
 
 plugins {
     application
-    id("com.moowork.node") version "1.3.1"
+    kotlin("jvm") version "1.8.10"
+    id("com.github.node-gradle.node") version "7.0.2"
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}
+
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))  // Ensure Kotlin targets the same Java version
+    }
 }
 
 application {
-    mainClassName = "com.landonpatmore.yahoofantasybot.backend.ApplicationKt"
-}
-
-node {
-    nodeModulesDir = file("../frontend")
-    version = "14.19.3"
-    distBaseUrl = "https://direct.nodejs.org/dist/"
-    download = true
+    mainClass.set("com.landonpatmore.yahoofantasybot.backend.ApplicationKt")
 }
 
 repositories {
-    maven { url = uri("https://jcenter.bintray.com") }
+    mavenCentral()
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.4.0")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion")
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
     implementation("ch.qos.logback:logback-classic:$logbackVersion")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
-    implementation("io.ktor:ktor-gson:$ktorVersion")
+    implementation("io.ktor:ktor-serialization-gson:$ktorVersion")  // Use ktor-serialization-gson instead of ktor-gson
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
     implementation("io.ktor:ktor-client-json-jvm:$ktorVersion")
@@ -38,28 +43,49 @@ dependencies {
     testImplementation("io.ktor:ktor-server-tests:$ktorVersion")
 }
 
-kotlin.sourceSets["main"].kotlin.srcDirs("src")
-kotlin.sourceSets["test"].kotlin.srcDirs("test")
-
-sourceSets["main"].resources.srcDirs("resources")
-sourceSets["test"].resources.srcDirs("testresources")
-
-tasks.create<Delete>("cleanFrontend") {
-    delete("resources/frontend")
+sourceSets {
+    main {
+        kotlin.srcDir("src")
+        resources.srcDir("resources")
+    }
+    test {
+        kotlin.srcDir("test")
+        resources.srcDir("testresources")
+    }
 }
 
-tasks.create<Copy>("copyFrontend") {
-    dependsOn("cleanFrontend")
-    from(file("../frontend/build"))
-    into(file("resources/frontend"))
+tasks {
+    register<Delete>("cleanFrontend") {
+        delete("resources/frontend")
+    }
+
+    register<Copy>("copyFrontend") {
+        dependsOn("cleanFrontend")
+        from(file("../frontend/build"))
+        into(file("resources/frontend"))
+    }
+
+    // Correct task registration using NodeTask
+    register<com.github.gradle.node.npm.task.NpmTask>("buildFrontend") {
+        dependsOn("npmInstall")
+        args.set(listOf("run", "build"))  // Run npm build command
+        // setArgs(listOf("run", "build"))
+        finalizedBy("copyFrontend")
+    }
+
+    named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
+        dependsOn("buildFrontend")
+    }
 }
 
-tasks.create<com.moowork.gradle.node.npm.NpmTask>("buildFrontend") {
-    dependsOn("npmInstall")
-    setArgs(listOf("run", "build"))
-    finalizedBy("copyFrontend")
+node {
+    // nodeModulesDir = file("../frontend")
+    nodeProjectDir.set(file("../frontend"))
+    download.set(true)
 }
 
-tasks.getByName<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
-    dependsOn("buildFrontend")
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    kotlinOptions {
+        jvmTarget = "17"  // Ensure Kotlin matches Java 17
+    }
 }

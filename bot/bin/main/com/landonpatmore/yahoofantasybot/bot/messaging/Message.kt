@@ -22,24 +22,21 @@
  * SOFTWARE.
  */
 
-package com.landonpatmore.yahoofantasybot.shared.utils.models
+package com.landonpatmore.yahoofantasybot.bot.messaging
 
-sealed class EnvVariable {
-    sealed class Str(val variable: String, val optional: Boolean = false) : EnvVariable() {
-        object YahooClientId : Str(System.getenv("YAHOO_CLIENT_ID") ?: "")
-        object YahooClientSecret : Str(System.getenv("YAHOO_CLIENT_SECRET") ?: "")
-
-        // Don't know if yahoo cares about the case, but looking at docs, they are lower case
-        // It shouldn't matter, but knowing Yahoo, it does
-        object YahooGameKey : Str(System.getenv("YAHOO_GAME_KEY")?.lowercase() ?: "")
-        object YahooLeagueId : Str(System.getenv("YAHOO_LEAGUE_ID") ?: "")
-        object GroupMeBotId : Str(System.getenv("GROUP_ME_BOT_ID") ?: "", true)
-        object DiscordWebhookUrl : Str(System.getenv("DISCORD_WEBHOOK_URL") ?: "", true)
-        object SlackWebhookUrl : Str(System.getenv("SLACK_WEBHOOK_URL") ?: "", true)
-        object JdbcDatabaseUrl : Str(System.getenv("JDBC_DATABASE_URL") ?: "")
-    }
-
-    sealed class Integer(val variable: Int) : EnvVariable() {
-        object Port : Integer(System.getenv("PORT")?.toIntOrNull() ?: -1)
+sealed class Message(val title: String, val message: String) {
+    class Score(message: String) : Message("Score", message)
+    class CloseScore(message: String) : Message("Close Score", message)
+    class MatchUp(message: String) : Message("Match Up", message)
+    class Standings(message: String) : Message("Standings", message)
+    class Generic(message: String) : Message("Message", message)
+    class Unknown(message: String) : Message("", message)
+    sealed class Transaction(title: String, message: String) :
+        Message(title, message) {
+        class Add(message: String) : Transaction("Add", message)
+        class Drop(message: String) : Transaction("Drop", message)
+        class AddDrop(message: String) : Transaction("Add/Drop", message)
+        class Trade(message: String) : Transaction("Trade", message)
+        class Commish(message: String) : Transaction("Commish", message)
     }
 }

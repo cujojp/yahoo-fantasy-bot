@@ -22,24 +22,23 @@
  * SOFTWARE.
  */
 
-package com.landonpatmore.yahoofantasybot.shared.utils.models
+package com.landonpatmore.yahoofantasybot.bot.messaging
 
-sealed class EnvVariable {
-    sealed class Str(val variable: String, val optional: Boolean = false) : EnvVariable() {
-        object YahooClientId : Str(System.getenv("YAHOO_CLIENT_ID") ?: "")
-        object YahooClientSecret : Str(System.getenv("YAHOO_CLIENT_SECRET") ?: "")
+import com.mashape.unirest.http.Unirest
+import com.mashape.unirest.request.body.RequestBodyEntity
 
-        // Don't know if yahoo cares about the case, but looking at docs, they are lower case
-        // It shouldn't matter, but knowing Yahoo, it does
-        object YahooGameKey : Str(System.getenv("YAHOO_GAME_KEY")?.lowercase() ?: "")
-        object YahooLeagueId : Str(System.getenv("YAHOO_LEAGUE_ID") ?: "")
-        object GroupMeBotId : Str(System.getenv("GROUP_ME_BOT_ID") ?: "", true)
-        object DiscordWebhookUrl : Str(System.getenv("DISCORD_WEBHOOK_URL") ?: "", true)
-        object SlackWebhookUrl : Str(System.getenv("SLACK_WEBHOOK_URL") ?: "", true)
-        object JdbcDatabaseUrl : Str(System.getenv("JDBC_DATABASE_URL") ?: "")
-    }
+class GroupMe(botId: String) : MessagingService(botId) {
+    override val name = "GroupMe"
 
-    sealed class Integer(val variable: Int) : EnvVariable() {
-        object Port : Integer(System.getenv("PORT")?.toIntOrNull() ?: -1)
-    }
+    override val maxMessageLength = 1000
+
+    private val postUrl = "https://api.groupme.com/v3/bots/post"
+
+    override fun generateRequest(message: String): RequestBodyEntity =
+        Unirest.post(postUrl)
+            .header("Content-Type", "application/json")
+            .body("{\"text\" : \"$message\", \"bot_id\" : \"${url}\"}")
+
+    override fun cleanMessage(message: String): String =
+        message.replace("**", "")
 }

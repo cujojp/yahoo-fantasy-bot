@@ -22,24 +22,20 @@
  * SOFTWARE.
  */
 
-package com.landonpatmore.yahoofantasybot.shared.utils.models
+package com.landonpatmore.yahoofantasybot.bot.bridges
 
-sealed class EnvVariable {
-    sealed class Str(val variable: String, val optional: Boolean = false) : EnvVariable() {
-        object YahooClientId : Str(System.getenv("YAHOO_CLIENT_ID") ?: "")
-        object YahooClientSecret : Str(System.getenv("YAHOO_CLIENT_SECRET") ?: "")
+import com.jakewharton.rxrelay3.PublishRelay
+import io.reactivex.rxjava3.core.Observable
+import io.reactivex.rxjava3.functions.Consumer
+import io.reactivex.rxjava3.schedulers.Schedulers
+import org.jsoup.nodes.Document
 
-        // Don't know if yahoo cares about the case, but looking at docs, they are lower case
-        // It shouldn't matter, but knowing Yahoo, it does
-        object YahooGameKey : Str(System.getenv("YAHOO_GAME_KEY")?.lowercase() ?: "")
-        object YahooLeagueId : Str(System.getenv("YAHOO_LEAGUE_ID") ?: "")
-        object GroupMeBotId : Str(System.getenv("GROUP_ME_BOT_ID") ?: "", true)
-        object DiscordWebhookUrl : Str(System.getenv("DISCORD_WEBHOOK_URL") ?: "", true)
-        object SlackWebhookUrl : Str(System.getenv("SLACK_WEBHOOK_URL") ?: "", true)
-        object JdbcDatabaseUrl : Str(System.getenv("JDBC_DATABASE_URL") ?: "")
-    }
+class StandingsBridge : Bridge<Document> {
+    private val dataBridge = PublishRelay.create<Document>()
 
-    sealed class Integer(val variable: Int) : EnvVariable() {
-        object Port : Integer(System.getenv("PORT")?.toIntOrNull() ?: -1)
-    }
+    override val consumer: Consumer<Document>
+        get() = dataBridge
+
+    override val eventStream: Observable<Document>
+        get() = dataBridge.subscribeOn(Schedulers.io())
 }

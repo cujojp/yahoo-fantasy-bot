@@ -1,63 +1,78 @@
 buildscript {
     repositories {
         mavenCentral()
-        maven {
-            url 'https://jcenter.bintray.com'
-            name 'jcenter'
-        }
     }
-
     dependencies {
         classpath "io.insert-koin:koin-gradle-plugin:2.1.6"
     }
 }
 
 plugins {
-    id 'com.github.johnrengelman.shadow' version '4.0.2'
-    id 'org.jetbrains.kotlin.jvm' version '1.4.0'
-}
-
-shadowJar {
-    baseName = 'shadow'
-    classifier = null
-    version = null
+    id 'org.jetbrains.kotlin.jvm' version '1.8.10'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
 }
 
 allprojects {
-    apply plugin: 'java'
+    apply plugin: 'java-library'
     apply plugin: 'kotlin'
     apply plugin: 'koin'
 
-    sourceCompatibility = 1.8
-
-    dependencies {
-        compile "org.jetbrains.kotlin:kotlin-stdlib:1.1.2"
-        compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
-        implementation("com.github.scribejava:scribejava-apis:6.0.0")
-
-        testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.5.1'
-    }
     repositories {
         mavenCentral()
-        maven { url "http://jcenter.bintray.com" }
     }
-    compileKotlin {
+
+    ext {
+        kotlinVersion = '1.8.10'
+        scribeJavaVersion = '6.0.0'
+        junitVersion = '5.7.0'
+    }
+
+    dependencies {
+        implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
+        implementation "com.github.scribejava:scribejava-apis:$scribeJavaVersion"
+        testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
+    }
+
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
         kotlinOptions {
-            jvmTarget = "1.8"
+            jvmTarget = "17"  // Ensure Kotlin matches Java 17
+        }
+    }
+
+    java {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(17))  // Ensure Java 17
+        }
+    }
+
+    kotlin {
+        jvmToolchain {
+            languageVersion.set(JavaLanguageVersion.of(17))  // Ensure Kotlin targets the same Java version
         }
     }
 }
 
-apply from: file('gradle/heroku/clean.gradle')
-
+// Configure shadowJar separately for each project
 project(":bot") {
     apply plugin: 'com.github.johnrengelman.shadow'
+
+    shadowJar {
+        archiveBaseName.set('bot-shadow')
+        archiveClassifier.set('all')
+        archiveVersion.set('')
+    }
 
     apply from: file("$rootProject.projectDir/gradle/heroku/stage.gradle")
 }
 
 project(":backend") {
     apply plugin: 'com.github.johnrengelman.shadow'
+
+    shadowJar {
+        archiveBaseName.set('backend-shadow')
+        archiveClassifier.set('all')
+        archiveVersion.set('')
+    }
 
     apply from: file("$rootProject.projectDir/gradle/heroku/stage.gradle")
 }
