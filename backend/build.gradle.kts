@@ -76,6 +76,10 @@ tasks {
     named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
         dependsOn("buildFrontend")
     }
+
+    named<ProcessResources>("processResources") {
+        dependsOn(tasks.named("copyFrontend"))
+    }
 }
 
 node {
