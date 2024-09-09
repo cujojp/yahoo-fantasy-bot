@@ -25,8 +25,8 @@
 package com.landonpatmore.yahoofantasybot.bot.utils.alerts
 
 import com.landonpatmore.yahoofantasybot.bot.utils.IDataRetriever
-import org.koin.core.KoinComponent
-import org.koin.core.inject
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 import org.quartz.Job
 import org.quartz.JobExecutionContext
 

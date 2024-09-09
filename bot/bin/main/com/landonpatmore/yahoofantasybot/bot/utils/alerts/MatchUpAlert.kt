@@ -27,7 +27,7 @@ package com.landonpatmore.yahoofantasybot.bot.utils.alerts
 import com.landonpatmore.yahoofantasybot.bot.bridges.MatchUpBridge
 import com.landonpatmore.yahoofantasybot.bot.utils.DataRetriever
 import com.landonpatmore.yahoofantasybot.bot.utils.models.YahooApiRequest
-import org.koin.core.inject
+import org.koin.core.component.inject
 import org.quartz.JobExecutionContext
 
 class MatchUpAlert : BaseAlert() {
