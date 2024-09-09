@@ -78,7 +78,7 @@ tasks {
     }
 
     named<ProcessResources>("processResources") {
-        dependsOn(tasks.named("copyFrontend"))
+        dependsOn("copyFrontend")
     }
 }
 
