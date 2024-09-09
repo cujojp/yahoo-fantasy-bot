@@ -1,25 +1,20 @@
 apply plugin: 'application'
 
-application {
-    mainClass.set('com.landonpatmore.yahoofantasybot.bot.MainKt')  // For Gradle 7+
-}
+mainClassName = 'com.landonpatmore.yahoofantasybot.bot.MainKt'
 
 dependencies {
-    implementation(project(":shared"))  // Replace compile with implementation
+    compile(project(":shared"))
+
+    // Existing dependencies
     implementation("io.reactivex.rxjava3:rxjava:3.0.4")
     implementation("io.reactivex.rxjava3:rxkotlin:3.0.0")
     implementation("com.jakewharton.rxrelay3:rxrelay:3.0.0")
     implementation("com.mashape.unirest:unirest-java:1.4.9")
     implementation("org.quartz-scheduler:quartz:2.3.0")
     implementation("org.jsoup:jsoup:1.7.2")
-}
 
-repositories {
-    mavenCentral()
-}
-
-tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
-    kotlinOptions {
-        jvmTarget = "17"
-    }
+    // Add Koin dependencies
+    implementation("io.insert-koin:koin-core:3.2.0")
+    implementation("io.insert-koin:koin-ktor:3.2.0")
+    implementation("io.insert-koin:koin-logger-slf4j:3.2.0")
 }
