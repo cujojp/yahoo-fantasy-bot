@@ -34,6 +34,7 @@ import io.ktor.application.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.server.*
+import io.ktor.server.routing.*
 
 fun Application.putRoutes(db: Db) {
     routing {

@@ -28,6 +28,7 @@ import com.landonpatmore.yahoofantasybot.shared.database.Db
 import io.ktor.application.*
 import io.ktor.http.content.*
 import io.ktor.server.*
+import io.ktor.server.routing.*
 
 fun Application.serveFrontend() {
     routing {
