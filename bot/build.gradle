@@ -3,7 +3,7 @@ apply plugin: 'application'
 mainClassName = 'com.landonpatmore.yahoofantasybot.bot.MainKt'
 
 dependencies {
-    compile(project(":shared"))
+    implementation(project(":shared"))
 
     // Existing dependencies
     implementation("io.reactivex.rxjava3:rxjava:3.0.4")
