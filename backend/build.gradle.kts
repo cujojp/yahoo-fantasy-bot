@@ -36,7 +36,6 @@ dependencies {
     implementation("io.ktor:ktor-server-host-common:$ktorVersion")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-serialization-gson:$ktorVersion")  // Use ktor-serialization-gson instead of ktor-gson
-    implementation("io.ktor:ktor-server-routing:$ktorVersion")
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
     implementation("io.ktor:ktor-client-json-jvm:$ktorVersion")
