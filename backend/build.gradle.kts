@@ -37,10 +37,12 @@ dependencies {
     implementation("io.ktor:ktor-server-core:$ktorVersion")
     implementation("io.ktor:ktor-serialization-gson:$ktorVersion")  // Use ktor-serialization-gson instead of ktor-gson
     implementation("io.ktor:ktor-server-routing:$ktorVersion")
+    implementation("io.ktor:ktor-server-response:$ktorVersion")
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
     implementation("io.ktor:ktor-client-json-jvm:$ktorVersion")
     implementation("io.ktor:ktor-client-gson:$ktorVersion")
+
     // Koin dependencies for dependency injection
     implementation("io.insert-koin:koin-core:$koinVersion")
     implementation("io.insert-koin:koin-ktor:$koinVersion")

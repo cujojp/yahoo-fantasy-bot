@@ -38,7 +38,7 @@ import io.ktor.client.features.json.*
 import io.ktor.client.request.*
 import io.ktor.features.*
 import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.*
 
 private var service: OAuth20Service? = null
 

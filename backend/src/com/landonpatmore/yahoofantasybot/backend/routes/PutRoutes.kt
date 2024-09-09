@@ -33,7 +33,7 @@ import com.landonpatmore.yahoofantasybot.shared.database.models.MessagingService
 import io.ktor.application.*
 import io.ktor.request.*
 import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.*
 
 fun Application.putRoutes(db: Db) {
     routing {
