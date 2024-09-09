@@ -54,6 +54,12 @@ sourceSets {
     }
 }
 
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    kotlinOptions {
+        jvmTarget = "17"  // Align Kotlin and Java targets to JVM 17
+    }
+}
+
 tasks {
     register<Delete>("cleanFrontend") {
         delete("resources/frontend")
@@ -65,31 +71,22 @@ tasks {
         into(file("resources/frontend"))
     }
 
-    // Correct task registration using NodeTask
     register<com.github.gradle.node.npm.task.NpmTask>("buildFrontend") {
         dependsOn("npmInstall")
-        args.set(listOf("run", "build"))  // Run npm build command
-        // setArgs(listOf("run", "build"))
+        args.set(listOf("run", "build"))
         finalizedBy("copyFrontend")
-    }
-
-    named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
-        dependsOn("buildFrontend")
     }
 
     named<ProcessResources>("processResources") {
         dependsOn("copyFrontend")
     }
+
+    named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
+        dependsOn("buildFrontend")
+    }
 }
 
 node {
-    // nodeModulesDir = file("../frontend")
     nodeProjectDir.set(file("../frontend"))
     download.set(true)
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-    kotlinOptions {
-        jvmTarget = "17"  // Ensure Kotlin matches Java 17
-    }
 }
