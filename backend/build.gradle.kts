@@ -41,7 +41,6 @@ dependencies {
     implementation("io.ktor:ktor-client-json-jvm:$ktorVersion")
     implementation("io.ktor:ktor-client-gson:$ktorVersion")
     implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
-    implementation("io.ktor:ktor-server-static-content:$ktor_version")
 
     // Koin dependencies for dependency injection
     implementation("io.insert-koin:koin-core:$koinVersion")
