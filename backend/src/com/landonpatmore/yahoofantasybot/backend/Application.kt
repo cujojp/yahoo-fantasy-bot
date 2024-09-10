@@ -27,7 +27,7 @@ package com.landonpatmore.yahoofantasybot.backend
 import com.landonpatmore.yahoofantasybot.backend.routes.getRoutes
 import com.landonpatmore.yahoofantasybot.backend.routes.putRoutes
 import com.landonpatmore.yahoofantasybot.backend.routes.serveFrontend
-import io.ktor.application.*
+import io.ktor.server.application.*
 import io.ktor.features.*
 import io.ktor.gson.*
 import org.koin.core.context.startKoin

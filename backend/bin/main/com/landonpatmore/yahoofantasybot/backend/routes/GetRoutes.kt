@@ -31,7 +31,7 @@ import com.landonpatmore.yahoofantasybot.backend.models.Authentication
 import com.landonpatmore.yahoofantasybot.backend.models.ReleaseInformation
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
-import io.ktor.application.*
+import io.ktor.server.application.*
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
 import io.ktor.client.features.json.*

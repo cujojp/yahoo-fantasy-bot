@@ -30,7 +30,7 @@ import com.landonpatmore.yahoofantasybot.shared.database.models.Alert
 import com.landonpatmore.yahoofantasybot.shared.database.models.League
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessageType
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessagingService
-import io.ktor.application.*
+import io.ktor.server.application.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.server.*
