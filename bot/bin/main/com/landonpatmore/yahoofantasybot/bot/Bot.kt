@@ -28,8 +28,8 @@ import com.landonpatmore.yahoofantasybot.bot.utils.Arbiter
 import com.landonpatmore.yahoofantasybot.bot.utils.DataRetriever
 import com.landonpatmore.yahoofantasybot.bot.utils.IDataRetriever
 import com.landonpatmore.yahoofantasybot.shared.utils.EnvVariablesChecker
-import org.koin.core.KoinComponent
-import org.koin.core.inject
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.inject
 
 class Bot : KoinComponent {
     val dataRetriever: IDataRetriever by inject()

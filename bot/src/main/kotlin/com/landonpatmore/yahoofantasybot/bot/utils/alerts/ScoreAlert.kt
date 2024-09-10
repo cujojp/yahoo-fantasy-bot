@@ -26,7 +26,7 @@ package com.landonpatmore.yahoofantasybot.bot.utils.alerts
 
 import com.landonpatmore.yahoofantasybot.bot.bridges.ScoreUpdateBridge
 import com.landonpatmore.yahoofantasybot.bot.utils.models.YahooApiRequest
-import org.koin.core.inject
+import org.koin.core.component.inject
 import org.quartz.JobExecutionContext
 
 class ScoreAlert : BaseAlert() {
