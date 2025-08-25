@@ -18,3 +18,9 @@ dependencies {
     implementation("io.insert-koin:koin-ktor:3.2.0")
     implementation("io.insert-koin:koin-logger-slf4j:3.2.0")
 }
+
+// Fix implicit dependency issues
+distZip.dependsOn shadowJar
+distTar.dependsOn shadowJar
+startScripts.dependsOn shadowJar
+startShadowScripts.dependsOn jar

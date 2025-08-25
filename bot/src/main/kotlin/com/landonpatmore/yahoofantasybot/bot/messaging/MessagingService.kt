@@ -35,10 +35,9 @@ abstract class MessagingService(protected val url: String) : IMessagingService {
 
     protected abstract fun generateRequest(message: String): RequestBodyEntity
 
-    override fun accept(message: Pair<String, String>?) {
+    override fun accept(t: Pair<String, String>) {
         if (url.isNotEmpty()) {
-            // message should never be null, this is just a safety check
-            message?.let { createMessage(it) }
+            createMessage(t)
         }
     }
 

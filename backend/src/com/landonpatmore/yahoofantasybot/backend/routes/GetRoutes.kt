@@ -34,11 +34,11 @@ import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 import io.ktor.server.application.*
 import io.ktor.client.*
 import io.ktor.client.engine.okhttp.*
-import io.ktor.client.features.json.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
-import io.ktor.features.*
-import io.ktor.response.*
-import io.ktor.server.*
+import io.ktor.client.call.*
+import io.ktor.serialization.gson.*
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 private var service: OAuth20Service? = null
@@ -83,11 +83,11 @@ private fun Route.getMessageType(db: Db) {
 private fun Route.getReleaseInformation(currentVersion: String?) {
     get("/releaseInformation") {
         val release = HttpClient(OkHttp) {
-            install(JsonFeature) {
-                serializer = GsonSerializer()
+            install(ContentNegotiation) {
+                gson()
             }
-        }.use {
-            it.get<ReleaseInformation>(ReleaseInformation.URL)
+        }.use { client ->
+            client.get(ReleaseInformation.URL).body<ReleaseInformation>()
         }.apply {
             this.currentVersion = currentVersion
             upgrade = versionChecker(currentVersion, latestVersion)
@@ -102,7 +102,7 @@ private fun Route.getReleaseInformation(currentVersion: String?) {
 fun Route.authenticate(db: Db) {
     get("/authenticate") {
         if (db.getLatestTokenData() == null) {
-            authenticationUrl("https://${call.request.origin.host}")?.let {
+            authenticationUrl("https://${call.request.headers["Host"] ?: "localhost:8080"}")?.let {
                 call.respondRedirect(it)
             }
         } else {

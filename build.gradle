@@ -57,8 +57,8 @@ project(":bot") {
     apply plugin: 'com.github.johnrengelman.shadow'
 
     shadowJar {
-        archiveBaseName.set('bot-shadow')
-        archiveClassifier.set('all')
+        archiveBaseName.set('bot')
+        archiveClassifier.set('')
         archiveVersion.set('')
     }
 
@@ -69,8 +69,8 @@ project(":backend") {
     apply plugin: 'com.github.johnrengelman.shadow'
 
     shadowJar {
-        archiveBaseName.set('backend-shadow')
-        archiveClassifier.set('all')
+        archiveBaseName.set('backend')
+        archiveClassifier.set('')
         archiveVersion.set('')
     }
 

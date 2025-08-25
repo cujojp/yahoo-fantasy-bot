@@ -1,6 +1,8 @@
 * * *
 
-[![Deploy New](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/railway-template)
+
+**Migrated from Heroku to Railway for better performance and cost-effectiveness!**
 
 **Note: Frontend does not work in safari (v3.0.0)**
 
@@ -35,9 +37,9 @@ Bot that alerts GroupMe, Slack, and Discord users about various things happening
 ![](https://i.imgur.com/1Ol63Al.png)
  
 ## Follow these steps EXACTLY!
-1. Click the `Deploy to Heroku` button at the top. It will auto-deploy the application to Heroku.
-2. Name the application whatever you would like.
-3. Follow the below section.
+1. Click the `Deploy on Railway` button at the top. It will auto-deploy the application to Railway.
+2. Follow the detailed setup guide in [RAILWAY_SETUP.md](RAILWAY_SETUP.md)
+3. Follow the below section for Yahoo API setup.
 
 ---
 
@@ -52,7 +54,7 @@ You will need a Yahoo Access Token, Client ID, and Client Secret for this bot to
 3. Fill out required information.
  * Name the application whatever you would like
  * Click "Installed Application"
- * The Redirect URI will be https://\<the name of your application\>.herokuapp.com/auth
+ * The Redirect URI will be https://\<the name of your application\>.railway.app/auth
  * Click "Fantasy Sports" and then "Read"
  * Click "Create App"
  

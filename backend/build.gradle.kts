@@ -35,12 +35,17 @@ dependencies {
     implementation("io.ktor:ktor-server-netty:$ktorVersion")
     implementation("io.ktor:ktor-server-host-common:$ktorVersion")
     implementation("io.ktor:ktor-server-core:$ktorVersion")
-    implementation("io.ktor:ktor-serialization-gson:$ktorVersion")  // Use ktor-serialization-gson instead of ktor-gson
+    implementation("io.ktor:ktor-serialization-gson:$ktorVersion")
+    implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
+    implementation("io.ktor:ktor-server-compression:$ktorVersion")
+    implementation("io.ktor:ktor-server-call-logging:$ktorVersion")
+    implementation("io.ktor:ktor-server-cors:$ktorVersion")
+    implementation("io.ktor:ktor-server-default-headers:$ktorVersion")
+    
+    // Ktor client dependencies
     implementation("io.ktor:ktor-client-core:$ktorVersion")
     implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
-    implementation("io.ktor:ktor-client-json-jvm:$ktorVersion")
-    implementation("io.ktor:ktor-client-gson:$ktorVersion")
-    implementation("io.ktor:ktor-server-content-negotiation:$ktor_version")
+    implementation("io.ktor:ktor-client-content-negotiation:$ktorVersion")
 
     // Koin dependencies for dependency injection
     implementation("io.insert-koin:koin-core:$koinVersion")
@@ -48,6 +53,7 @@ dependencies {
     implementation("io.insert-koin:koin-logger-slf4j:$koinVersion")
     implementation(project(":shared"))
     testImplementation("io.ktor:ktor-server-tests:$ktorVersion")
+    testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
     // Other dependencies
     implementation("ch.qos.logback:logback-classic:1.2.1")
 }
@@ -92,6 +98,19 @@ tasks {
 
     named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
         dependsOn("buildFrontend")
+    }
+
+    // Fix implicit dependency issues
+    named("distTar") {
+        dependsOn("shadowJar")
+    }
+
+    named("startScripts") {
+        dependsOn("shadowJar")
+    }
+
+    named("startShadowScripts") {
+        dependsOn("jar")
     }
 }
 

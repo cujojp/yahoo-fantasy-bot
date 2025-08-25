@@ -27,7 +27,7 @@ package com.landonpatmore.yahoofantasybot.bot.bridges
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.functions.Consumer
 
-interface Bridge<T> {
+interface Bridge<T : Any> {
     val consumer: Consumer<T>
 
     val eventStream: Observable<T>

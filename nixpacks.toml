@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ['...', 'nodejs', 'yarn']
+
+[phases.build]
+cmds = [
+    'chmod +x ./gradlew',
+    './gradlew :backend:clean :backend:build :backend:shadowJar --no-daemon'
+]
+
+[start]
+cmd = 'java -jar build/libs/backend.jar'

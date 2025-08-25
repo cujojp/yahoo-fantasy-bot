@@ -31,9 +31,8 @@ import com.landonpatmore.yahoofantasybot.shared.database.models.League
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessageType
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessagingService
 import io.ktor.server.application.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.server.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
 fun Application.putRoutes(db: Db) {

@@ -28,11 +28,15 @@ import com.landonpatmore.yahoofantasybot.backend.routes.getRoutes
 import com.landonpatmore.yahoofantasybot.backend.routes.putRoutes
 import com.landonpatmore.yahoofantasybot.backend.routes.serveFrontend
 import io.ktor.server.application.*
-import io.ktor.features.*
-import io.ktor.gson.*
+import io.ktor.serialization.gson.*
+import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.compression.*
+// import io.ktor.server.plugins.calllogging.*
+import io.ktor.server.plugins.cors.*
+import io.ktor.server.plugins.defaultheaders.*
 import org.koin.core.context.startKoin
-import org.koin.ktor.ext.inject
 import com.landonpatmore.yahoofantasybot.shared.database.Db
+import org.koin.core.context.GlobalContext
 import com.landonpatmore.yahoofantasybot.shared.modules.sharedModule
 import io.ktor.http.*
 
@@ -46,7 +50,7 @@ fun main(args: Array<String>): Unit {
 @Suppress("unused") // Referenced in application.conf
 @kotlin.jvm.JvmOverloads
 fun Application.module(testing: Boolean = false) {
-    val db: Db by inject()
+    val db: Db = GlobalContext.get().get()
 
     install(DefaultHeaders) {
         header("X-Engine", "Ktor") // will send this header with each response
@@ -58,10 +62,10 @@ fun Application.module(testing: Boolean = false) {
         }
     }
     install(Compression)
-    install(CallLogging)
+    // install(CallLogging) // TODO: Fix import issue
     install(CORS) {
-        method(HttpMethod.Options)
-        method(HttpMethod.Put)
+        allowMethod(HttpMethod.Options)
+        allowMethod(HttpMethod.Put)
         anyHost()
     }
     // TODO: Will move to locations later

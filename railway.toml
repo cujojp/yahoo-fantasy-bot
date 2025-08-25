@@ -1,0 +1,7 @@
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "java -jar build/libs/backend.jar"
+restartPolicyType = "ON_FAILURE" 
+restartPolicyMaxRetries = 10

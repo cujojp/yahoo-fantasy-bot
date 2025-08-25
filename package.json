@@ -1,0 +1,18 @@
+{
+  "name": "yahoo-fantasy-bot",
+  "version": "1.0.0",
+  "description": "Yahoo Fantasy Bot - Local Development Scripts",
+  "scripts": {
+    "dev:setup": "./scripts/dev-setup.sh",
+    "dev:backend": "./scripts/run-backend.sh",
+    "dev:bot": "./scripts/run-bot.sh",
+    "dev:build": "./gradlew clean build shadowJar --no-daemon -x test",
+    "dev:build-full": "./gradlew clean build shadowJar --no-daemon",
+    "dev:db:start": "docker-compose up -d postgres",
+    "dev:db:stop": "docker-compose down",
+    "dev:db:logs": "docker-compose logs postgres",
+    "dev:frontend": "cd frontend && npm start"
+  },
+  "devDependencies": {},
+  "private": true
+}
