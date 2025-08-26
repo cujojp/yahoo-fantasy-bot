@@ -1,206 +1,269 @@
-* * *
+# Yahoo Fantasy Bot
 
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/railway-template)
 
-**Migrated from Heroku to Railway for better performance and cost-effectiveness!**
+**🚀 Migrated from Heroku to Railway for better performance and cost-effectiveness!**
 
-**Note: Frontend does not work in safari (v3.0.0)**
+A powerful automation bot that sends real-time alerts about Yahoo Fantasy Football league activities to GroupMe, Slack, and Discord. Built with Kotlin and designed for easy deployment on Railway with PostgreSQL.
 
-### Feel free to contribute!
+![Yahoo Fantasy Bot Screenshot](https://i.imgur.com/1Ol63Al.png)
 
-#### Current Roadmap
+## ✨ Features
 
-- [x] Kotlin (because why not :?)
-- [x] Reactive X
-- [ ] Docker Support
-- [x] More in depth messages
-- [ ] Respond to chat commands from various messaging services
-- [ ] Clean up code
+### 🏈 League Transaction Alerts
+- **ADD** - Player additions to rosters
+- **DROP** - Player releases from rosters  
+- **ADD/DROP** - Combined roster moves
+- **TRADE** - Player trades between teams
+- **COMMISH CHANGES** - Commissioner actions
 
-**Auto-deploys do not happen automatically. You will need to come back and click the "Deploy" button again to get the latest bot. It will reset everything. Just follow all the steps again and you will be good!**
+### 🎛️ Customization
+- Configure alerts with custom schedules
+- Multiple messaging service support
+- Web interface for easy configuration
+- Real-time notifications
 
-# Yahoo Fantasy Bot
-Bot that alerts GroupMe, Slack, and Discord users about various things happening in their Yahoo Fantasy Football League.
-## What it does:
+### 🏗️ Architecture
+- **Backend**: Ktor web server with REST API
+- **Bot**: Scheduled job processor for Yahoo API integration
+- **Frontend**: React web interface for configuration
+- **Database**: PostgreSQL for data persistence
+- **Deployment**: Railway with Docker support
 
->**League Transaction Alerts**
->* ADD
->* DROP
->* ADD/DROP
->* TRADE
->* COMMISH CHANGES
+## 📋 Current Roadmap
 
-## What it can do:
+- [x] Kotlin implementation
+- [x] Reactive X integration
+- [x] Docker support (local development)
+- [x] Railway deployment
+- [x] In-depth message customization
+- [x] Web interface for configuration
+- [ ] Chat command responses
+- [ ] Code cleanup and optimization
+- [ ] Mobile app companion
 
-- You can customize all alerts and send them whenever and however many times you want!
+## 🚀 Quick Start
 
-![](https://i.imgur.com/1Ol63Al.png)
- 
-## Follow these steps EXACTLY!
-1. Click the `Deploy on Railway` button at the top. It will auto-deploy the application to Railway.
-2. Follow the detailed setup guide in [RAILWAY_SETUP.md](RAILWAY_SETUP.md)
-3. Follow the below section for Yahoo API setup.
+Choose your deployment method:
 
----
+### Option 1: Railway Deployment (Recommended)
+**Perfect for production use**
 
-### (REQUIRED) Setting up Yahoo API
-You will need a Yahoo Access Token, Client ID, and Client Secret for this bot to work.
+1. Click the **Deploy on Railway** button above
+2. Follow the detailed guide: **[📖 Railway Setup Guide](RAILWAY_SETUP.md)**
+3. Configure your Yahoo API credentials
+4. Set up messaging services (optional)
 
-1. Go to https://developer.yahoo.com/apps/
-2. Click "Create an App" button
+### Option 2: Local Development
+**Perfect for testing and development**
 
-![](https://imgur.com/VDgZ1Ze.png)
+1. Follow the comprehensive guide: **[💻 Local Development Guide](LOCAL_DEVELOPMENT.md)**
+2. Quick setup: `npm run dev:setup`
+3. Configure your `.env` file
+4. Start services: `npm run dev:backend`
 
-3. Fill out required information.
- * Name the application whatever you would like
- * Click "Installed Application"
- * The Redirect URI will be https://\<the name of your application\>.railway.app/auth
- * Click "Fantasy Sports" and then "Read"
- * Click "Create App"
- 
-![](https://imgur.com/VqctUfM.png)
+## 📚 Documentation
 
-4. You will see your: Yahoo Client ID and Client Secret. Save these for later.
+| Guide | Description | Best For |
+|-------|-------------|----------|
+| **[🚀 Railway Setup](RAILWAY_SETUP.md)** | Complete Railway deployment guide | Production deployment |
+| **[💻 Local Development](LOCAL_DEVELOPMENT.md)** | Local environment setup | Development & testing |
+| **[📋 Migration Checklist](MIGRATION_CHECKLIST.md)** | Heroku to Railway migration | Existing users |
 
-![](https://imgur.com/NbUwOmD.png)
+## 🔑 Yahoo API Setup
 
-5. To get your league ID: (2 Ways)
+Before using the bot, you'll need Yahoo Fantasy Sports API credentials:
 
- **On the website**
- * Go to Yahoo Fantasy Football and click your league
- * Go to settings page
- * At the top, you will see "League ID", save for later
- 
- **In the app**
- * Open the app
- * Click "League" tab
- * Click "Settings" at the top
- * At the top, you will see "League ID#", save for later
+### 1. Create Yahoo Developer App
 
----
+1. Go to [Yahoo Developer Console](https://developer.yahoo.com/apps/)
+2. Click **"Create an App"**
 
-5. **The following sections are all optional, but at least one of them is needed. All of them can be used as well!**
+![Create App](https://imgur.com/VDgZ1Ze.png)
 
-(The following sections were taken from [dtcarls/ff_bot](https://github.com/dtcarls/ff_bot) as the steps are the exact same. They are tweaked a little bit.)
+### 2. Configure Your App
 
---- 
+- **Application Name**: Choose any name
+- **Application Type**: Select "Installed Application"
+- **Redirect URI**: `https://<your-app-name>.railway.app/auth`
+- **Permissions**: Check "Fantasy Sports" → "Read"
+- Click **"Create App"**
 
-### (Optional) GroupMe Setup
+![App Configuration](https://imgur.com/VqctUfM.png)
+
+### 3. Get Your Credentials
+
+Save these for later configuration:
+- **Yahoo Client ID**
+- **Yahoo Client Secret**
+
+![Credentials](https://imgur.com/NbUwOmD.png)
+
+### 4. Find Your League ID
+
+**Method 1: Website**
+1. Go to Yahoo Fantasy Football
+2. Click your league → Settings
+3. Find "League ID" at the top
+
+**Method 2: Mobile App**
+1. Open Yahoo Fantasy app
+2. League tab → Settings
+3. Find "League ID#" at the top
+
+## 🔗 Messaging Services Setup
+
+Configure one or more messaging services (all optional):
+
 <details>
- <summary>Click to expand</summary>
- <p>
- Go to www.groupme.com and sign up or login
- 
- If you don't have one for your league already, create a new "Group Chat"
- 
- ![](https://i.imgur.com/32ioDoZ.png)
- 
- Next we will setup the bot for GroupMe
- 
- Go to https://dev.groupme.com/session/new and login
- 
- Click "Create Bot"
- 
- ![](https://i.imgur.com/TI1bpwE.png)
- 
- Create your bot. GroupMe does a good job explaining what each thing is.
- 
- ![](https://i.imgur.com/DQUcuuI.png)
- 
- After you have created your bot you will see something similar to this. Click "Edit"
- 
- ![](https://i.imgur.com/Z9vwKKt.png)
- 
- This page is important as you will need the "Bot ID" on this page.You can also send a test message with the text box to be sure it is connected to your chat room.
- Side note: If you use the bot id depicted in the page you will spam an empty chat room so not worth the effort
- 
- ![](https://i.imgur.com/k65EZFJ.png)
- </p>
-</details>
---- 
+<summary>📱 GroupMe Setup</summary>
 
-### (Optional) Slack setup
+1. Go to [GroupMe](https://www.groupme.com) and login
+2. Create a group chat for your league (if needed)
+3. Visit [GroupMe Developer](https://dev.groupme.com/session/new)
+4. Click **"Create Bot"**
+5. Fill out bot details and select your group
+6. Save the **Bot ID** for configuration
+
+![GroupMe Bot](https://i.imgur.com/k65EZFJ.png)
+
+</details>
+
 <details>
- <summary>Click to expand</summary>
- <p>
- Go to https://slack.com/signin and sign in to the workspace the bot will be in
- 
- If you don't have one for your league already, create a new League Channel
- 
- Next we will setup the bot for Slack
- 
- Go to https://api.slack.com/apps/new
- 
- Name the app, and choose the intended workspace from the dropdown.
- 
- Select the Incoming Webhooks section on the side.
- 
- ![](https://i.imgur.com/ziRQCVP.png)
- 
- Change the toggle from Off to On.
- 
- Select Add New Webhook to Workspace
- 
- ![](https://i.imgur.com/tJRRrfz.png)
- 
- In the Post to dropdown, select the channel you want to send messages to, then
- select Authorize.
- 
- This page is important as you will need the "Webhook URL" on this page.
- 
- ![](https://i.imgur.com/mmzhDS0.png)
- </p>
-</details>
---- 
+<summary>💬 Slack Setup</summary>
 
-### (Optional) Discord setup
+1. Go to your [Slack workspace](https://slack.com/signin)
+2. Create a league channel (if needed)
+3. Visit [Slack API](https://api.slack.com/apps/new)
+4. Create new app for your workspace
+5. Enable **Incoming Webhooks**
+6. Add webhook to your channel
+7. Save the **Webhook URL**
+
+![Slack Webhook](https://i.imgur.com/mmzhDS0.png)
+
+</details>
+
 <details>
- <summary>Click to expand</summary>
- <p>
- Log into or create a discord account
- 
- Go to or create a discord server to receive messages in
- 
- Open the server settings
- 
- ![](https://i.imgur.com/bDk2ttJ.png)
- 
- Go to Webhooks
- 
- ![](https://i.imgur.com/mfFHGbT.png)
- 
- Create a webhook, give it a name and pick which channel to receive messages in
- 
- ![](https://i.imgur.com/NAJLv6D.png)
- 
- Save the "Webhook URL" on this page
- 
- ![](https://i.imgur.com/U4MKZSY.png)
- </p>
+<summary>🎮 Discord Setup</summary>
+
+1. Open your Discord server
+2. Server Settings → Webhooks
+3. Create new webhook
+4. Choose channel and name
+5. Save the **Webhook URL**
+
+![Discord Webhook](https://i.imgur.com/U4MKZSY.png)
+
 </details>
---- 
 
-6. Follow the below section.
+## 🛠️ Development
 
+### Prerequisites
+- Java 17+
+- Node.js 16+
+- Docker & Docker Compose
+- Yahoo API credentials
 
-### Heroku Setup
+### Quick Development Setup
+```bash
+# Clone and setup
+git clone <your-repo>
+cd yahoo-fantasy-bot
 
-1. Go to your [dashboard](https://dashboard.heroku.com/apps). Now you will need to setup your environment variables so that it works for your league. Click Settings at your dashboard. Then click "Reveal Config Vars" button and you will see something like this.
+# Start local environment
+npm run dev:setup
 
-![](https://imgur.com/8k1tZPs.png)
+# Edit environment variables
+# cp env.example .env
+# (Edit .env with your credentials)
 
-2. Fill out all the variables (You can have any combination of messaging services (0..n).)
-3. Click "Deploy App". This will automatically configure the dynos and run all required scripts to create the bot. (this will take a bit)
-4. Click "Overview"
-5. Click "Configure Dynos" and turn on the "web" and "bot" dyno
-6. Click "Open App" at the top right
-7. Follow the setup
-8. Once you are authorized you can add all types of alerts for your league!
-9. IMPORTANT: Once done adding alerts, Click "Configure Dynos" and turn OFF the "web" dyno (failing to do this will put your bot to sleep because of heroku policy, thus your bot will not function.)
+# Build and start
+npm run dev:build
+npm run dev:backend
+```
 
-### You are all set! Enjoy the bot!
+Visit http://localhost:8080 for the web interface.
 
-## License
+### Available Commands
+```bash
+npm run dev:setup          # Complete local setup
+npm run dev:build          # Build all services
+npm run dev:backend        # Start web service
+npm run dev:bot            # Start bot service
+npm run dev:frontend       # Frontend dev server
+npm run dev:db:start       # Start database
+npm run dev:db:stop        # Stop database
+```
+
+## 🔧 Environment Variables
+
+| Variable | Required | Description | Example |
+|----------|----------|-------------|---------|
+| `YAHOO_CLIENT_ID` | ✅ | Yahoo API Client ID | `dj0yJmk9...` |
+| `YAHOO_CLIENT_SECRET` | ✅ | Yahoo API Client Secret | `abcd1234...` |
+| `YAHOO_LEAGUE_ID` | ✅ | Your Fantasy League ID | `123456` |
+| `YAHOO_GAME_KEY` | ✅ | Sport key (NFL=423) | `423` |
+| `JDBC_DATABASE_URL` | ✅ | PostgreSQL connection | Auto-set by Railway |
+| `GROUP_ME_BOT_ID` | ❌ | GroupMe Bot ID | `abc123...` |
+| `DISCORD_WEBHOOK_URL` | ❌ | Discord webhook | `https://discord.com/api/webhooks/...` |
+| `SLACK_WEBHOOK_URL` | ❌ | Slack webhook | `https://hooks.slack.com/services/...` |
+| `PORT` | ❌ | Web server port | `8080` |
+
+### Yahoo Game Keys
+- **NFL**: 423
+- **NBA**: 428
+- **MLB**: 431
+- **NHL**: 427
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+**Database Connection Failed**
+- Verify `JDBC_DATABASE_URL` is correct
+- Check PostgreSQL service status
+- Review Railway service logs
+
+**Yahoo API Errors**
+- Verify Client ID and Secret
+- Check redirect URI matches exactly
+- Ensure Fantasy Sports permissions enabled
+
+**No Notifications**
+- Verify at least one messaging service is configured
+- Check webhook URLs are valid
+- Review bot service logs
+
+**Web Interface Issues**
+- Clear browser cache
+- Check if PORT environment variable is set
+- Verify frontend build completed successfully
+
+### Getting Help
+
+1. Check the [Local Development Guide](LOCAL_DEVELOPMENT.md) for detailed troubleshooting
+2. Review the [Railway Setup Guide](RAILWAY_SETUP.md) for deployment issues
+3. Open an issue on GitHub with logs and error messages
+
+## 🤝 Contributing
+
+We welcome contributions! Please feel free to:
+
+1. Report bugs and issues
+2. Suggest new features
+3. Submit pull requests
+4. Improve documentation
+
+### Development Workflow
+1. Fork the repository
+2. Create a feature branch
+3. Follow the [Local Development Guide](LOCAL_DEVELOPMENT.md)
+4. Test your changes locally
+5. Submit a pull request
+
+## 📄 License
+
 ```
 MIT License
 
@@ -224,3 +287,9 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+---
+
+**⚠️ Note**: Safari v3.0.0 compatibility issues with the frontend interface. Please use Chrome, Firefox, or newer Safari versions.
+
+**📢 Auto-deploys**: Manual deployment required. Click "Deploy" in Railway dashboard to get latest updates. Follow setup steps again after deployment.
