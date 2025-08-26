@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2020 Landon Patmore
+ * Copyright (c) 2025 Kaleb White
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@ import com.mashape.unirest.http.Unirest
 import org.json.JSONArray
 import org.json.JSONObject
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
+import com.landonpatmore.yahoofantasybot.shared.services.PlayerInfo
 
 object OpenAIHelper {
     private const val OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
@@ -68,6 +69,20 @@ object OpenAIHelper {
                 "Test Message: $originalMessage"
             }
             
+            // For transaction tests, try to add some context
+            val enhancedUserPrompt = if (isTransactionTest) {
+                buildString {
+                    append(userPrompt)
+                    // Extract player names for potential context
+                    val playerNames = extractPlayerNamesFromMessage(originalMessage)
+                    if (playerNames.isNotEmpty()) {
+                        append("\nPlayers involved: ${playerNames.joinToString(", ")}")
+                    }
+                }
+            } else {
+                userPrompt
+            }
+            
             val requestBody = JSONObject().apply {
                 put("model", MODEL)
                 put("messages", JSONArray().apply {
@@ -77,7 +92,7 @@ object OpenAIHelper {
                     })
                     put(JSONObject().apply {
                         put("role", "user")
-                        put("content", userPrompt)
+                        put("content", enhancedUserPrompt)
                     })
                 })
                 put("max_tokens", MAX_TOKENS)
@@ -110,5 +125,39 @@ object OpenAIHelper {
             e.printStackTrace()
             null
         }
+    }
+    
+    /**
+     * Extracts player names from a transaction message for enhanced context
+     */
+    private fun extractPlayerNamesFromMessage(message: String): List<String> {
+        val playerNames = mutableListOf<String>()
+        
+        // Simple regex patterns to extract names from common formats
+        // "Player Name (TEAM, POS)" format
+        val playerPattern = Regex("""([A-Z][a-z]+ [A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s*\([A-Z]{2,4},\s*[A-Z]+\)""")
+        val matches = playerPattern.findAll(message)
+        
+        matches.forEach { match ->
+            val playerName = match.groupValues[1].trim()
+            if (playerName.isNotEmpty() && !playerNames.contains(playerName)) {
+                playerNames.add(playerName)
+            }
+        }
+        
+        // Fallback: look for capitalized names (less reliable)
+        if (playerNames.isEmpty()) {
+            val namePattern = Regex("""([A-Z][a-z]+\s+[A-Z][a-z]+)""")
+            val nameMatches = namePattern.findAll(message)
+            nameMatches.take(3).forEach { match ->
+                val name = match.groupValues[1]
+                // Filter out common non-player words
+                if (!name.matches(Regex("(added|dropped|traded|received|Team|Name|League).*", RegexOption.IGNORE_CASE))) {
+                    playerNames.add(name)
+                }
+            }
+        }
+        
+        return playerNames.take(3) // Limit to 3 players for context
     }
 }

@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2020 Landon Patmore
+ * Copyright (c) 2025 Kaleb White
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,8 +28,10 @@ import com.mashape.unirest.http.Unirest
 import io.reactivex.rxjava3.core.Single
 import org.json.JSONArray
 import org.json.JSONObject
+import com.landonpatmore.yahoofantasybot.shared.services.YahooNewsService
+import com.landonpatmore.yahoofantasybot.shared.services.PlayerInfo
 
-class OpenAIService(private val apiKey: String) {
+class OpenAIService(private val apiKey: String, private val yahooNewsService: YahooNewsService? = null) {
     
     companion object {
         private const val OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
@@ -39,7 +41,18 @@ class OpenAIService(private val apiKey: String) {
     }
     
     fun generateSchefterTweet(transactionType: String, transactionDetails: String): Single<String> {
+        return generateSchefterTweetWithPlayers(transactionType, transactionDetails, emptyList())
+    }
+    
+    fun generateSchefterTweetWithPlayers(
+        transactionType: String, 
+        transactionDetails: String, 
+        players: List<PlayerInfo>
+    ): Single<String> {
         return Single.fromCallable {
+            // Get news context if available
+            val newsContext = YahooNewsService?.generateNewsContext(players) ?: ""
+            
             val systemPrompt = when (transactionType) {
                 "COMMISH CHANGES" -> """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about fantasy league administrative changes.
                     |Keep it under 280 characters. Use insider language and create urgency/excitement.
@@ -49,11 +62,17 @@ class OpenAIService(private val apiKey: String) {
                 else -> """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about a fantasy football transaction.
                     |Keep it under 280 characters. Use insider language and create urgency/excitement.
                     |Use only ONE emoji maximum, preferably 🚨 for breaking news or 🏈 for football context, or none at all. Make it sound like breaking news.
-                    |Focus on the fantasy impact and player value.
+                    |Focus on the fantasy impact and player value. If recent news context is provided, incorporate relevant details.
                     |Transaction types: ADD (roster addition), DROP (player release), ADD/DROP (roster move), TRADE (player swap).""".trimMargin()
             }
             
-            val userPrompt = "Transaction Type: $transactionType\nDetails: $transactionDetails"
+            val userPrompt = buildString {
+                append("Transaction Type: $transactionType\n")
+                append("Details: $transactionDetails")
+                if (newsContext.isNotEmpty()) {
+                    append("\n$newsContext")
+                }
+            }
             
             val requestBody = JSONObject().apply {
                 put("model", MODEL)

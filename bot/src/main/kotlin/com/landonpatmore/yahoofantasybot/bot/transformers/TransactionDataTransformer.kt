@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2020 Landon Patmore
+ * Copyright (c) 2025 Kaleb White
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,7 @@ package com.landonpatmore.yahoofantasybot.bot.transformers
 import com.landonpatmore.yahoofantasybot.bot.messaging.Message
 import com.landonpatmore.yahoofantasybot.bot.services.OpenAIService
 import com.landonpatmore.yahoofantasybot.bot.utils.bold
+import com.landonpatmore.yahoofantasybot.shared.services.PlayerInfo
 import io.reactivex.rxjava3.core.Observable
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
@@ -58,14 +59,26 @@ private fun addMessage(event: Element, openAIService: OpenAIService?): Observabl
 
     val playersAdded = StringBuilder()
     val playerDetailsList = mutableListOf<String>()
+    val playerInfoList = mutableListOf<PlayerInfo>()
 
     for (player: Element in players) {
         val name = player.select("full").text()
         val nflTeam = player.select("editorial_team_abbr").text()
         val position = player.select("display_position").text()
+        val playerId = player.select("player_id").text()
+        val playerKey = player.select("player_key").text()
 
         playersAdded.append("${name.bold()} ($nflTeam, $position), ")
         playerDetailsList.add("$name ($nflTeam, $position)")
+        
+        // Create PlayerInfo for news context
+        playerInfoList.add(PlayerInfo(
+            name = name,
+            nflTeam = nflTeam,
+            position = position,
+            playerId = playerId.ifEmpty { null },
+            playerKey = playerKey.ifEmpty { null }
+        ))
     }
 
     val finalMessage = playersAdded.trimEnd().removeSuffix(",")
@@ -73,7 +86,7 @@ private fun addMessage(event: Element, openAIService: OpenAIService?): Observabl
 
     return if (openAIService != null) {
         val transactionDetails = "$fantasyTeam added ${playerDetailsList.joinToString(", ")}"
-        openAIService.generateSchefterTweet("ADD", transactionDetails)
+        openAIService.generateSchefterTweetWithPlayers("ADD", transactionDetails, playerInfoList)
             .map { tweet ->
                 Message.Transaction.Add(baseMessage, tweet)
             }
@@ -93,14 +106,26 @@ private fun dropMessage(event: Element, openAIService: OpenAIService?): Observab
 
     val playersDropped = StringBuilder()
     val playerDetailsList = mutableListOf<String>()
+    val playerInfoList = mutableListOf<PlayerInfo>()
 
     for (player: Element in players) {
         val name = player.select("full").text()
         val nflTeam = player.select("editorial_team_abbr").text()
         val position = player.select("display_position").text()
+        val playerId = player.select("player_id").text()
+        val playerKey = player.select("player_key").text()
 
         playersDropped.append("${name.bold()} ($nflTeam, $position), ")
         playerDetailsList.add("$name ($nflTeam, $position)")
+        
+        // Create PlayerInfo for news context
+        playerInfoList.add(PlayerInfo(
+            name = name,
+            nflTeam = nflTeam,
+            position = position,
+            playerId = playerId.ifEmpty { null },
+            playerKey = playerKey.ifEmpty { null }
+        ))
     }
 
     val finalMessage = playersDropped.trimEnd().removeSuffix(",")
@@ -108,7 +133,7 @@ private fun dropMessage(event: Element, openAIService: OpenAIService?): Observab
 
     return if (openAIService != null) {
         val transactionDetails = "$fantasyTeam dropped ${playerDetailsList.joinToString(", ")}"
-        openAIService.generateSchefterTweet("DROP", transactionDetails)
+        openAIService.generateSchefterTweetWithPlayers("DROP", transactionDetails, playerInfoList)
             .map { tweet ->
                 Message.Transaction.Drop(baseMessage, tweet)
             }
@@ -130,6 +155,8 @@ private fun addDropMessage(event: Element, openAIService: OpenAIService?): Obser
     val playersDropped = StringBuilder()
     val addedPlayersList = mutableListOf<String>()
     val droppedPlayersList = mutableListOf<String>()
+    val addedPlayerInfoList = mutableListOf<PlayerInfo>()
+    val droppedPlayerInfoList = mutableListOf<PlayerInfo>()
 
     var playersAddedCount = 0
     var playersDroppedCount = 0
@@ -138,17 +165,28 @@ private fun addDropMessage(event: Element, openAIService: OpenAIService?): Obser
         val name = player.select("full").text()
         val nflTeam = player.select("editorial_team_abbr").text()
         val position = player.select("display_position").text()
+        val playerId = player.select("player_id").text()
+        val playerKey = player.select("player_key").text()
 
         val e = "${name.bold()} ($nflTeam, $position), "
         val playerDetails = "$name ($nflTeam, $position)"
+        val playerInfo = PlayerInfo(
+            name = name,
+            nflTeam = nflTeam,
+            position = position,
+            playerId = playerId.ifEmpty { null },
+            playerKey = playerKey.ifEmpty { null }
+        )
 
         if (player.select("type").text() == "add") {
             playersAdded.append(e)
             addedPlayersList.add(playerDetails)
+            addedPlayerInfoList.add(playerInfo)
             playersAddedCount++
         } else {
             playersDropped.append(e)
             droppedPlayersList.add(playerDetails)
+            droppedPlayerInfoList.add(playerInfo)
             playersDroppedCount++
         }
     }
@@ -161,7 +199,9 @@ private fun addDropMessage(event: Element, openAIService: OpenAIService?): Obser
 
     return if (openAIService != null) {
         val transactionDetails = "$fantasyTeam added ${addedPlayersList.joinToString(", ")} and dropped ${droppedPlayersList.joinToString(", ")}"
-        openAIService.generateSchefterTweet("ADD/DROP", transactionDetails)
+        // Combine both added and dropped players for news context
+        val allPlayerInfoList = addedPlayerInfoList + droppedPlayerInfoList
+        openAIService.generateSchefterTweetWithPlayers("ADD/DROP", transactionDetails, allPlayerInfoList)
             .map { tweet ->
                 Message.Transaction.AddDrop(baseMessage, tweet)
             }
@@ -185,22 +225,35 @@ private fun tradeMessage(event: Element, openAIService: OpenAIService?): Observa
     val fromTradeeTeam = StringBuilder()
     val traderPlayersList = mutableListOf<String>()
     val tradeePlayersList = mutableListOf<String>()
+    val traderPlayerInfoList = mutableListOf<PlayerInfo>()
+    val tradeePlayerInfoList = mutableListOf<PlayerInfo>()
 
     for (player: Element in players) {
         val fantasyTeam = player.select("source_team_name").text()
         val name = player.select("full").text()
         val nflTeam = player.select("editorial_team_abbr").text()
         val position = player.select("display_position").text()
+        val playerId = player.select("player_id").text()
+        val playerKey = player.select("player_key").text()
 
         val e = "${name.bold()} ($nflTeam, $position), "
         val playerDetails = "$name ($nflTeam, $position)"
+        val playerInfo = PlayerInfo(
+            name = name,
+            nflTeam = nflTeam,
+            position = position,
+            playerId = playerId.ifEmpty { null },
+            playerKey = playerKey.ifEmpty { null }
+        )
 
         if (fantasyTeam == trader) {
             fromTraderTeam.append(e)
             traderPlayersList.add(playerDetails)
+            traderPlayerInfoList.add(playerInfo)
         } else {
             fromTradeeTeam.append(e)
             tradeePlayersList.add(playerDetails)
+            tradeePlayerInfoList.add(playerInfo)
         }
     }
 
@@ -211,7 +264,9 @@ private fun tradeMessage(event: Element, openAIService: OpenAIService?): Observa
 
     return if (openAIService != null) {
         val transactionDetails = "$trader traded ${traderPlayersList.joinToString(", ")} to $tradee for ${tradeePlayersList.joinToString(", ")}"
-        openAIService.generateSchefterTweet("TRADE", transactionDetails)
+        // Combine all traded players for news context  
+        val allTradePlayerInfo = traderPlayerInfoList + tradeePlayerInfoList
+        openAIService.generateSchefterTweetWithPlayers("TRADE", transactionDetails, allTradePlayerInfo)
             .map { tweet ->
                 Message.Transaction.Trade(baseMessage, tweet)
             }
@@ -230,7 +285,7 @@ private fun commissionerMessage(openAIService: OpenAIService?): Observable<Messa
     
     return if (openAIService != null) {
         val transactionDetails = "League commissioner has made administrative changes to fantasy league settings. The changes could affect scoring, rosters, waivers, or other league rules that impact all fantasy managers."
-        openAIService.generateSchefterTweet("COMMISH CHANGES", transactionDetails)
+        openAIService.generateSchefterTweetWithPlayers("COMMISH CHANGES", transactionDetails, emptyList())
             .map { tweet ->
                 Message.Transaction.Commish(baseMessage, tweet)
             }
