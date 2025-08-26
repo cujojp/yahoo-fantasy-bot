@@ -50,8 +50,19 @@ class OpenAIService(private val apiKey: String, private val yahooNewsService: Ya
         players: List<PlayerInfo>
     ): Single<String> {
         return Single.fromCallable {
+            println("OpenAIService: Generating Schefter tweet for $transactionType with ${players.size} players")
+            println("OpenAIService: Transaction details: $transactionDetails")
+            
             // Get news context if available
-            val newsContext = yahooNewsService?.generateNewsContext(players) ?: ""
+            val newsContext = if (yahooNewsService != null) {
+                println("OpenAIService: Yahoo News Service available, fetching news context...")
+                yahooNewsService.generateNewsContext(players)
+            } else {
+                println("OpenAIService: No Yahoo News Service available")
+                ""
+            }
+            
+            println("OpenAIService: News context received: '$newsContext'")
             
             val systemPrompt = when (transactionType) {
                 "COMMISH CHANGES" -> """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about fantasy league administrative changes.
@@ -74,6 +85,11 @@ class OpenAIService(private val apiKey: String, private val yahooNewsService: Ya
                 }
             }
             
+            println("OpenAIService: Final user prompt being sent to OpenAI:")
+            println("--- USER PROMPT START ---")
+            println(userPrompt)
+            println("--- USER PROMPT END ---")
+            
             val requestBody = JSONObject().apply {
                 put("model", MODEL)
                 put("messages", JSONArray().apply {
@@ -90,20 +106,27 @@ class OpenAIService(private val apiKey: String, private val yahooNewsService: Ya
                 put("temperature", TEMPERATURE)
             }
             
+            println("OpenAIService: Sending request to OpenAI...")
             val response = Unirest.post(OPENAI_API_URL)
                 .header("Authorization", "Bearer $apiKey")
                 .header("Content-Type", "application/json")
                 .body(requestBody)
                 .asJson()
             
+            println("OpenAIService: OpenAI response status: ${response.status}")
+            
             if (response.status == 200) {
-                response.body.`object`
+                val generatedTweet = response.body.`object`
                     .getJSONArray("choices")
                     .getJSONObject(0)
                     .getJSONObject("message")
                     .getString("content")
                     .trim()
+                
+                println("OpenAIService: Generated Schefter tweet: '$generatedTweet'")
+                generatedTweet
             } else {
+                println("OpenAIService: OpenAI API error response: ${response.body}")
                 throw Exception("OpenAI API error: ${response.status} - ${response.body}")
             }
         }

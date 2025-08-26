@@ -53,23 +53,34 @@ class YahooNewsService(
      * Fetches recent news context for a list of players
      */
     fun getRecentNewsForPlayers(players: List<PlayerInfo>): String {
-        if (players.isEmpty()) return ""
+        println("YahooNewsService: Fetching news for ${players.size} players")
+        if (players.isEmpty()) {
+            println("YahooNewsService: No players provided, returning empty news")
+            return ""
+        }
         
         val newsItems = mutableListOf<String>()
         val maxNewsItems = 3 // Limit to avoid token bloat
         
         players.take(maxNewsItems).forEach { player ->
+            println("YahooNewsService: Fetching news for ${player.name} (${player.nflTeam}, ${player.position})")
             val news = getPlayerNews(player.name, player.nflTeam, player.playerId)
             if (news.isNotEmpty()) {
+                println("YahooNewsService: Found news for ${player.name}: $news")
                 newsItems.add("${player.name}: $news")
+            } else {
+                println("YahooNewsService: No news found for ${player.name}")
             }
         }
         
-        return if (newsItems.isNotEmpty()) {
+        val result = if (newsItems.isNotEmpty()) {
             "Recent NFL News: ${newsItems.joinToString(" | ")}"
         } else {
             ""
         }
+        
+        println("YahooNewsService: Final news context: '$result'")
+        return result
     }
     
     /**
@@ -77,18 +88,24 @@ class YahooNewsService(
      */
     private fun getPlayerNews(playerName: String, nflTeam: String, playerId: String?): String {
         val cacheKey = "${playerName}_${nflTeam}"
+        println("YahooNewsService: Looking up news for cache key: $cacheKey")
         
         // Check cache first
         newsCache[cacheKey]?.let { (cachedNews, timestamp) ->
             if (timestamp.isAfter(LocalDateTime.now().minusMinutes(CACHE_DURATION_MINUTES.toLong()))) {
+                println("YahooNewsService: Using cached news for $playerName: '$cachedNews'")
                 return cachedNews
+            } else {
+                println("YahooNewsService: Cache expired for $playerName, fetching fresh news")
             }
         }
         
+        println("YahooNewsService: No cache found for $playerName, fetching from Yahoo API")
         val news = fetchPlayerNewsFromYahoo(playerName, nflTeam, playerId)
         
         // Cache the result
         newsCache[cacheKey] = Pair(news, LocalDateTime.now())
+        println("YahooNewsService: Cached news result for $playerName: '$news'")
         
         return news
     }
@@ -97,16 +114,22 @@ class YahooNewsService(
      * Fetches player news from Yahoo Sports API or searches Yahoo Sports
      */
     private fun fetchPlayerNewsFromYahoo(playerName: String, nflTeam: String, playerId: String?): String {
+        println("YahooNewsService: Attempting to fetch news from Yahoo for $playerName (playerId: $playerId)")
         return try {
             // Try specific player endpoint if we have player_id
-            playerId?.let { id ->
+            val result = playerId?.let { id ->
+                println("YahooNewsService: Trying specific player news endpoint for ID: $id")
                 fetchSpecificPlayerNews(id)
             } ?: run {
+                println("YahooNewsService: No player ID, falling back to team news approach")
                 // Fallback to team news or general approach
                 fetchTeamNews(nflTeam, playerName)
             }
+            println("YahooNewsService: Yahoo API fetch result for $playerName: '$result'")
+            result
         } catch (e: Exception) {
-            println("Error fetching news for $playerName: ${e.message}")
+            println("YahooNewsService: Error fetching news for $playerName: ${e.message}")
+            e.printStackTrace()
             ""
         }
     }
@@ -173,6 +196,7 @@ class YahooNewsService(
     /**
      * Gets team-related news
      */
+    @Suppress("UNUSED_PARAMETER")
     private fun getTeamRelatedNews(nflTeam: String): String {
         // This could be enhanced to use Yahoo's team news endpoints
         // For now, return empty to avoid API errors
@@ -195,15 +219,22 @@ class YahooNewsService(
      * Generates a contextual news summary for OpenAI
      */
     fun generateNewsContext(players: List<PlayerInfo>): String {
+        println("YahooNewsService: Generating news context for OpenAI with ${players.size} players")
         val news = getRecentNewsForPlayers(players)
         
-        return if (news.isNotEmpty()) {
+        val result = if (news.isNotEmpty()) {
+            println("YahooNewsService: Using news context: $news")
             "Context: $news"
         } else {
             // Fallback to current week/season context
             val currentWeek = getCurrentNFLWeek()
-            "Context: Week $currentWeek of NFL season"
+            val fallback = "Context: Week $currentWeek of NFL season"
+            println("YahooNewsService: No news found, using fallback context: $fallback")
+            fallback
         }
+        
+        println("YahooNewsService: Final context for OpenAI: '$result'")
+        return result
     }
     
     /**

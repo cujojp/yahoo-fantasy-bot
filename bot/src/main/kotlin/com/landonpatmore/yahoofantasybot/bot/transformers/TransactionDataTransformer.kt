@@ -72,13 +72,15 @@ private fun addMessage(event: Element, openAIService: OpenAIService?): Observabl
         playerDetailsList.add("$name ($nflTeam, $position)")
         
         // Create PlayerInfo for news context
-        playerInfoList.add(PlayerInfo(
+        val playerInfo = PlayerInfo(
             name = name,
             nflTeam = nflTeam,
             position = position,
             playerId = playerId.ifEmpty { null },
             playerKey = playerKey.ifEmpty { null }
-        ))
+        )
+        playerInfoList.add(playerInfo)
+        println("TransactionDataTransformer: Extracted player info for $name: $playerInfo")
     }
 
     val finalMessage = playersAdded.trimEnd().removeSuffix(",")
@@ -86,6 +88,8 @@ private fun addMessage(event: Element, openAIService: OpenAIService?): Observabl
 
     return if (openAIService != null) {
         val transactionDetails = "$fantasyTeam added ${playerDetailsList.joinToString(", ")}"
+        println("TransactionDataTransformer: Calling OpenAI for ADD transaction with ${playerInfoList.size} players")
+        println("TransactionDataTransformer: Transaction details: $transactionDetails")
         openAIService.generateSchefterTweetWithPlayers("ADD", transactionDetails, playerInfoList)
             .map { tweet ->
                 Message.Transaction.Add(baseMessage, tweet)
@@ -133,6 +137,8 @@ private fun dropMessage(event: Element, openAIService: OpenAIService?): Observab
 
     return if (openAIService != null) {
         val transactionDetails = "$fantasyTeam dropped ${playerDetailsList.joinToString(", ")}"
+        println("TransactionDataTransformer: Calling OpenAI for DROP transaction with ${playerInfoList.size} players")
+        println("TransactionDataTransformer: Transaction details: $transactionDetails")
         openAIService.generateSchefterTweetWithPlayers("DROP", transactionDetails, playerInfoList)
             .map { tweet ->
                 Message.Transaction.Drop(baseMessage, tweet)
@@ -201,6 +207,8 @@ private fun addDropMessage(event: Element, openAIService: OpenAIService?): Obser
         val transactionDetails = "$fantasyTeam added ${addedPlayersList.joinToString(", ")} and dropped ${droppedPlayersList.joinToString(", ")}"
         // Combine both added and dropped players for news context
         val allPlayerInfoList = addedPlayerInfoList + droppedPlayerInfoList
+        println("TransactionDataTransformer: Calling OpenAI for ADD/DROP transaction with ${allPlayerInfoList.size} players")
+        println("TransactionDataTransformer: Transaction details: $transactionDetails")
         openAIService.generateSchefterTweetWithPlayers("ADD/DROP", transactionDetails, allPlayerInfoList)
             .map { tweet ->
                 Message.Transaction.AddDrop(baseMessage, tweet)
@@ -266,6 +274,8 @@ private fun tradeMessage(event: Element, openAIService: OpenAIService?): Observa
         val transactionDetails = "$trader traded ${traderPlayersList.joinToString(", ")} to $tradee for ${tradeePlayersList.joinToString(", ")}"
         // Combine all traded players for news context  
         val allTradePlayerInfo = traderPlayerInfoList + tradeePlayerInfoList
+        println("TransactionDataTransformer: Calling OpenAI for TRADE transaction with ${allTradePlayerInfo.size} players")
+        println("TransactionDataTransformer: Transaction details: $transactionDetails")
         openAIService.generateSchefterTweetWithPlayers("TRADE", transactionDetails, allTradePlayerInfo)
             .map { tweet ->
                 Message.Transaction.Trade(baseMessage, tweet)
