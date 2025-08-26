@@ -51,7 +51,7 @@ class OpenAIService(private val apiKey: String, private val yahooNewsService: Ya
     ): Single<String> {
         return Single.fromCallable {
             // Get news context if available
-            val newsContext = YahooNewsService?.generateNewsContext(players) ?: ""
+            val newsContext = yahooNewsService?.generateNewsContext(players) ?: ""
             
             val systemPrompt = when (transactionType) {
                 "COMMISH CHANGES" -> """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about fantasy league administrative changes.
