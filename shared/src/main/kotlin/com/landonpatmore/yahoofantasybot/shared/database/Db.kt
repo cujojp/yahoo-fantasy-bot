@@ -35,6 +35,15 @@ class Db(
 ) {
 
     init {
+        println("Db initialization - received URL: $url")
+        println("Environment check:")
+        println("  DATABASE_URL: ${System.getenv("DATABASE_URL") ?: "not set"}")
+        println("  JDBC_DATABASE_URL: ${System.getenv("JDBC_DATABASE_URL") ?: "not set"}")
+        
+        if (url.isEmpty() || url == "NO_DATABASE_URL_SET") {
+            throw IllegalArgumentException("Database URL not found. Please ensure JDBC_DATABASE_URL or DATABASE_URL environment variable is set in Railway.")
+        }
+        
         connect()
         createTables()
     }

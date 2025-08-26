@@ -38,12 +38,29 @@ sealed class EnvVariable {
         object SlackWebhookUrl : Str(System.getenv("SLACK_WEBHOOK_URL") ?: "", true)
         object OpenAIApiKey : Str(System.getenv("OPENAI_API_KEY") ?: "", true)
         object JdbcDatabaseUrl : Str(
-            System.getenv("JDBC_DATABASE_URL").let { 
-                if (it == null || it.isEmpty() || it == "\$DATABASE_URL") {
-                    System.getenv("DATABASE_URL") ?: ""
-                } else {
-                    it
+            System.getenv("JDBC_DATABASE_URL").let { jdbcUrl ->
+                val databaseUrl = System.getenv("DATABASE_URL")
+                println("EnvVariable.JdbcDatabaseUrl initialization:")
+                println("  JDBC_DATABASE_URL from env: ${jdbcUrl ?: "null"}")
+                println("  DATABASE_URL from env: ${databaseUrl ?: "null"}")
+                
+                val result = when {
+                    !jdbcUrl.isNullOrEmpty() && jdbcUrl != "\$DATABASE_URL" -> {
+                        println("  Using JDBC_DATABASE_URL: $jdbcUrl")
+                        jdbcUrl
+                    }
+                    !databaseUrl.isNullOrEmpty() -> {
+                        println("  Using DATABASE_URL: $databaseUrl")
+                        databaseUrl
+                    }
+                    else -> {
+                        // Provide a clear placeholder that will fail fast
+                        println("  WARNING: No database URL found in environment!")
+                        "NO_DATABASE_URL_SET"
+                    }
                 }
+                println("  Final result: $result")
+                result
             }
         )
     }
