@@ -1,6 +1,8 @@
 import React from 'react'
-import './ReleaseNotification.scss'
-import Modal from 'react-modal'
+import { Alert, Button, Modal, Typography, Space } from 'antd'
+import { InfoCircleOutlined } from '@ant-design/icons'
+
+const { Title, Text } = Typography
 
 class ReleaseNotification extends React.Component {
     constructor(props) {
@@ -31,11 +33,30 @@ class ReleaseNotification extends React.Component {
 
     showNotification() {
         if (this.state.releaseInformation.upgrade) {
-            return <React.Fragment>
-                <h3>v{this.state.releaseInformation.latestVersion} has been released!</h3>
-                <button onClick={this.handleOpenModal}>Show Changelog</button>
-            </React.Fragment>
+            return (
+                <Alert
+                    message={`Version ${this.state.releaseInformation.latestVersion} is available!`}
+                    description={
+                        <Space>
+                            <Text>A new version has been released.</Text>
+                            <Button 
+                                type="link" 
+                                size="small" 
+                                icon={<InfoCircleOutlined />}
+                                onClick={this.handleOpenModal}
+                            >
+                                Show Changelog
+                            </Button>
+                        </Space>
+                    }
+                    type="info"
+                    showIcon
+                    closable
+                    style={{ marginBottom: 16 }}
+                />
+            )
         }
+        return null
     }
 
     handleOpenModal() {
@@ -46,26 +67,30 @@ class ReleaseNotification extends React.Component {
         this.setState({ showModal: false })
     }
 
-    handleOpenRepo() {
-        window.open('http://github.com/cujojp/yahoo-fantasy-bot','_blank')
+    handleOpenRepo = () => {
+        window.open('http://github.com/cujojp/yahoo-fantasy-bot', '_blank')
     }
 
     render() {
         return (
-            <div id="release-notification">
+            <>
                 {this.showNotification()}
                 <Modal
-                    isOpen={this.state.showModal}
-                    contentLabel="Minimal Modal Example"
+                    title="Changelog"
+                    open={this.state.showModal}
+                    onCancel={this.handleCloseModal}
+                    footer={[
+                        <Button key="close" onClick={this.handleCloseModal}>
+                            Close
+                        </Button>,
+                        <Button key="download" type="primary" onClick={this.handleOpenRepo}>
+                            Get the latest version!
+                        </Button>
+                    ]}
                 >
-                    <div id="release-notification-modal">
-                        <h1>Changelog</h1>
-                        <h3>{this.state.releaseInformation.changelog}</h3>
-                        <button onClick={this.handleCloseModal}>Close Changelog</button>
-                        <button onClick={this.handleOpenRepo}>Get the latest version!</button>
-                    </div>
+                    <Text>{this.state.releaseInformation.changelog}</Text>
                 </Modal>
-            </div>
+            </>
         )
     }
 }

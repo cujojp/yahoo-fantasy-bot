@@ -1,6 +1,8 @@
 import React from 'react'
-import './MessagingServices.scss'
-import { MdDeleteForever } from 'react-icons/md'
+import { Card, Table, Button, Input, Form, Space, message, Popconfirm, Tag, Tooltip, Select } from 'antd'
+import { DeleteOutlined, PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined } from '@ant-design/icons'
+
+const { Option } = Select
 
 class MessagingServices extends React.Component {
     constructor(props) {
@@ -8,64 +10,58 @@ class MessagingServices extends React.Component {
 
         this.state = {
             messagingServices: [],
-            service: "",
-            url: "",
-            testingMessage: false,
-            testResults: null
+            loading: true
         }
 
-        this.addMessagingService = this.addMessagingService.bind(this)
-        this.sendTestMessage = this.sendTestMessage.bind(this)
+        this.formRef = React.createRef()
     }
 
     componentDidMount() {
+        this.fetchMessagingServices()
+    }
+
+    fetchMessagingServices = () => {
+        this.setState({ loading: true })
         fetch("/messagingServices")
             .then(res => res.json())
             .then((result) => {
-                console.log(result)
                 this.setState({
-                    messagingServices: result
+                    messagingServices: result,
+                    loading: false
                 })
             },
                 (error) => {
-                    console.log("Error mate!")
+                    console.log(error)
+                    message.error('Failed to load messaging services')
+                    this.setState({ loading: false })
                 })
     }
 
-    handleService = (event) => {
-        this.setState({
-            service: event.target.value
-        })
-    }
-
-    handleUrl = (event) => {
-        this.setState({
-            url: event.target.value
-        })
-    }
-
-    mapToService(service){
-        switch(service) {
-            case 0: return "Discord"
-            case 1: return "Slack"
+    mapToAlertName(name) {
+        switch (name) {
+            case 0: return "Slack"
+            case 1: return "Discord"
             case 2: return "GroupMe"
             default: return "N/A"
         }
     }
 
-    addMessagingService() {
-        // Validate inputs
-        if (!this.state.service || this.state.url.trim() === '') {
-            alert('Please select a service and enter a valid URL');
-            return;
+    mapNameToValue(name) {
+        switch (name) {
+            case "Slack": return 0
+            case "Discord": return 1
+            case "GroupMe": return 2
+            default: return -1
         }
-        
+    }
+
+    addMessagingService = (values) => {
         const messagingServices = [...this.state.messagingServices]
-        messagingServices.push({
-            service: parseInt(this.state.service),
-            url: this.state.url.trim()
-        })
-        console.log(messagingServices)
+        const newService = {
+            name: this.mapNameToValue(values.name),
+            webHookUrl: values.webHookUrl
+        }
+        messagingServices.push(newService)
 
         fetch("/messagingServices", {
             method: "PUT",
@@ -73,21 +69,21 @@ class MessagingServices extends React.Component {
         })
             .then(res => res.json())
             .then((result) => {
-                console.log(result)
                 this.setState({
                     messagingServices: result
                 })
+                message.success('Messaging service added successfully')
+                this.formRef.current.resetFields()
             },
                 (error) => {
-                    console.log("Error mate!")
+                    console.log(error)
+                    message.error('Failed to add messaging service')
                 })
-        console.log(this.state)
     }
 
-    deleteMessagingService(event, index) {
+    deleteMessagingService = (index) => {
         const messagingServices = [...this.state.messagingServices]
         messagingServices.splice(index, 1)
-        console.log(messagingServices)
 
         fetch("/messagingServices", {
             method: "PUT",
@@ -95,118 +91,152 @@ class MessagingServices extends React.Component {
         })
             .then(res => res.json())
             .then((result) => {
-                console.log(result)
                 this.setState({
                     messagingServices: result
                 })
+                message.success('Messaging service deleted successfully')
             },
                 (error) => {
                     console.log("Error mate!")
+                    message.error('Failed to delete messaging service')
                 })
-        console.log(this.state)
     }
 
-    sendTestMessage() {
-        this.setState({ testingMessage: true, testResults: null })
-        
-        fetch("/testMessage", {
-            method: "POST",
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                message: "🤖 Test message from Yahoo Fantasy Bot! If you see this, your webhook is working correctly."
-            })
-        })
-            .then(res => res.json())
-            .then((result) => {
-                console.log("Test results:", result)
-                this.setState({
-                    testingMessage: false,
-                    testResults: result
-                })
-                // Clear results after 5 seconds
-                setTimeout(() => {
-                    this.setState({ testResults: null })
-                }, 5000)
-            },
-                (error) => {
-                    console.log("Error sending test message:", error)
-                    this.setState({
-                        testingMessage: false,
-                        testResults: { error: "Failed to send test message" }
-                    })
-                })
+    getServiceStatus = (service) => {
+        // This is a placeholder - you might want to implement actual status checking
+        // For now, we'll assume all configured services are active
+        return service.webHookUrl ? 'active' : 'inactive'
     }
 
     render() {
         const columns = [
-            "Service",
-            "Url"
+            {
+                title: 'Service',
+                dataIndex: 'name',
+                key: 'name',
+                render: (name) => (
+                    <Space>
+                        <span>{this.mapToAlertName(name)}</span>
+                        {name === 0 && <Tag color="purple">Slack</Tag>}
+                        {name === 1 && <Tag color="blue">Discord</Tag>}
+                        {name === 2 && <Tag color="green">GroupMe</Tag>}
+                    </Space>
+                )
+            },
+            {
+                title: 'Webhook URL',
+                dataIndex: 'webHookUrl',
+                key: 'webHookUrl',
+                render: (url) => (
+                    <Tooltip title={url}>
+                        <span style={{ 
+                            maxWidth: '300px', 
+                            overflow: 'hidden', 
+                            textOverflow: 'ellipsis',
+                            display: 'inline-block'
+                        }}>
+                            {url}
+                        </span>
+                    </Tooltip>
+                )
+            },
+            {
+                title: 'Status',
+                key: 'status',
+                render: (_, record) => {
+                    const status = this.getServiceStatus(record)
+                    return status === 'active' ? (
+                        <Tag icon={<CheckCircleOutlined />} color="success">Active</Tag>
+                    ) : (
+                        <Tag icon={<CloseCircleOutlined />} color="error">Inactive</Tag>
+                    )
+                }
+            },
+            {
+                title: 'Action',
+                key: 'action',
+                render: (_, record, index) => (
+                    <Popconfirm
+                        title="Delete this messaging service?"
+                        description="Are you sure to delete this messaging service?"
+                        onConfirm={() => this.deleteMessagingService(index)}
+                        okText="Yes"
+                        cancelText="No"
+                    >
+                        <Button 
+                            type="text" 
+                            danger 
+                            icon={<DeleteOutlined />}
+                        />
+                    </Popconfirm>
+                ),
+            },
         ]
 
         return (
-            <div id="messagingservices-area">
-                <h2 className="area-header">Messaging Services</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            {
-                                columns.map(column => {
-                                    return <th>{column}</th>
-                                })
-                            }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {
-                            this.state.messagingServices.map((messagingService, index) => {
-                                return <tr key={index}>
-                                    <td>{this.mapToService(messagingService.service)}</td>
-                                    <td>{messagingService.url}</td>
-                                    <td><button onClick={(event) => this.deleteMessagingService(event, index)}><MdDeleteForever /></button></td>
-                                </tr>
-                            })
-                        }
-                    </tbody>
-                </table>
-                <div>
-                    <div className="add-area">
-                        <select name="service" onChange={this.handleService} value={this.state.service}>
-                            <option value="" disabled selected>Service</option>
-                            {
-                                Array.from(Array(3).keys()).map(num => {
-                                    const val = this.mapToService(num)
-                                    return <option value={num}>{val}</option>
-                                })
-                            }
-                        </select>
-                        <input placeholder="Url" onChange={this.handleUrl} value={this.state.url}></input>
-                    </div>
-                    <div className="add-button-area">
-                        <button id="add-button" type="button" onClick={this.addMessagingService}>Add Service</button>
-                        <button 
-                            id="test-button" 
-                            type="button" 
-                            onClick={this.sendTestMessage}
-                            disabled={this.state.testingMessage || this.state.messagingServices.length === 0}
-                            style={{ marginLeft: '10px' }}
+            <Card 
+                title={
+                    <Space>
+                        <span>Messaging Services</span>
+                        <Tooltip title="Configure webhook URLs for different messaging platforms">
+                            <InfoCircleOutlined style={{ color: '#1890ff' }} />
+                        </Tooltip>
+                    </Space>
+                }
+            >
+                <Table
+                    columns={columns}
+                    dataSource={this.state.messagingServices}
+                    rowKey={(record, index) => index}
+                    loading={this.state.loading}
+                    pagination={false}
+                    style={{ marginBottom: 24 }}
+                />
+                
+                <Card type="inner" title="Add New Service">
+                    <Form
+                        ref={this.formRef}
+                        layout="vertical"
+                        onFinish={this.addMessagingService}
+                    >
+                        <Form.Item
+                            name="name"
+                            label="Service Type"
+                            rules={[{ required: true, message: 'Please select a service type' }]}
                         >
-                            {this.state.testingMessage ? 'Sending...' : 'Test Messages'}
-                        </button>
-                    </div>
-                    {this.state.testResults && (
-                        <div className="test-results" style={{ marginTop: '10px', padding: '10px', background: '#f0f0f0', borderRadius: '5px' }}>
-                            <h4>Test Results:</h4>
-                            {Object.entries(this.state.testResults).map(([service, result]) => (
-                                <div key={service}>
-                                    <strong>{service}:</strong> {result}
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
+                            <Select placeholder="Select a messaging service">
+                                <Option value="Slack">Slack</Option>
+                                <Option value="Discord">Discord</Option>
+                                <Option value="GroupMe">GroupMe</Option>
+                            </Select>
+                        </Form.Item>
+                        
+                        <Form.Item
+                            name="webHookUrl"
+                            label="Webhook URL"
+                            rules={[
+                                { required: true, message: 'Please enter webhook URL' },
+                                { type: 'url', message: 'Please enter a valid URL' }
+                            ]}
+                        >
+                            <Input 
+                                placeholder="https://hooks.slack.com/services/..." 
+                                prefix={<InfoCircleOutlined />}
+                            />
+                        </Form.Item>
+                        
+                        <Form.Item>
+                            <Button 
+                                type="primary" 
+                                htmlType="submit"
+                                icon={<PlusOutlined />}
+                            >
+                                Add Service
+                            </Button>
+                        </Form.Item>
+                    </Form>
+                </Card>
+            </Card>
         )
     }
 }

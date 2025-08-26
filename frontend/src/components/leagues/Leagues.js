@@ -1,6 +1,8 @@
 import React from 'react'
-import './Leagues.scss'
-import { MdDeleteForever } from 'react-icons/md'
+import { Card, Table, Button, Input, Form, Select, Space, message, Popconfirm, Tag } from 'antd'
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+
+const { Option } = Select
 
 class Leagues extends React.Component {
     constructor(props) {
@@ -8,24 +10,31 @@ class Leagues extends React.Component {
 
         this.state = {
             leagues: [],
-            leagueId: "",
-            gameKey: ""
+            loading: true
         }
 
-        this.addLeague = this.addLeague.bind(this)
+        this.formRef = React.createRef()
     }
 
     componentDidMount() {
+        this.fetchLeagues()
+    }
+
+    fetchLeagues = () => {
+        this.setState({ loading: true })
         fetch("/leagues")
             .then(res => res.json())
             .then((result) => {
                 console.log(result)
                 this.setState({
-                    leagues: result
+                    leagues: result,
+                    loading: false
                 })
             },
                 (error) => {
                     console.log("Error mate!")
+                    message.error('Failed to load leagues')
+                    this.setState({ loading: false })
                 })
     }
 
@@ -38,114 +47,149 @@ class Leagues extends React.Component {
         }
     }
 
-    handleLeagueId = (event) => {
-        this.setState({
-            leagueId: event.target.value
-        })
-    }
-
-    handleGameKey = (event) => {
-        this.setState({
-            gameKey: event.target.value
-        })
-    }
-
-    addLeague() {
+    addLeague = (values) => {
         const leagues = [...this.state.leagues]
         leagues.push({
-            leagueId: this.state.leagueId,
-            gameKey: this.state.gameKey
+            leagueId: values.leagueId,
+            gameKey: values.gameKey
         })
-        console.log(leagues)
 
         fetch("/leagues", {
             method: "PUT",
             body: JSON.stringify(leagues)
         })
-        .then(res => res.json())
-        .then((result) => {
-            console.log(result)
-            this.setState({
-                leagues: result
-            })
-        },
-        (error) => {
-            console.log("Error mate!")
-        })
-        console.log(this.state)
+            .then(res => res.json())
+            .then((result) => {
+                console.log(result)
+                this.setState({
+                    leagues: result
+                })
+                message.success('League added successfully')
+                this.formRef.current.resetFields()
+            },
+                (error) => {
+                    console.log("Error mate!")
+                    message.error('Failed to add league')
+                })
     }
 
-    deleteLeague(event, index) {
+    deleteLeague = (index) => {
         const leagues = [...this.state.leagues]
         leagues.splice(index, 1)
-        console.log(leagues)
 
         fetch("/leagues", {
             method: "PUT",
             body: JSON.stringify(leagues)
         })
-        .then(res => res.json())
-        .then((result) => {
-            console.log(result)
-            this.setState({
-                leagues: result
-            })
-        },
-        (error) => {
-            console.log("Error mate!")
-        })
-        console.log(this.state)
+            .then(res => res.json())
+            .then((result) => {
+                console.log(result)
+                this.setState({
+                    leagues: result
+                })
+                message.success('League deleted successfully')
+            },
+                (error) => {
+                    console.log("Error mate!")
+                    message.error('Failed to delete league')
+                })
+    }
+
+    getGameKeyTag = (gameKey) => {
+        const colorMap = {
+            'NFL': 'blue',
+            'MLB': 'red',
+            'NBA': 'orange'
+        }
+        return <Tag color={colorMap[gameKey] || 'default'}>{gameKey}</Tag>
     }
 
     render() {
         const columns = [
-            "League ID",
-            "Game Key"
+            {
+                title: 'League ID',
+                dataIndex: 'leagueId',
+                key: 'leagueId',
+            },
+            {
+                title: 'Game Key',
+                dataIndex: 'gameKey',
+                key: 'gameKey',
+                render: (gameKey) => this.getGameKeyTag(gameKey)
+            },
+            {
+                title: 'Action',
+                key: 'action',
+                render: (_, record, index) => (
+                    <Popconfirm
+                        title="Delete this league?"
+                        description="Are you sure to delete this league?"
+                        onConfirm={() => this.deleteLeague(index)}
+                        okText="Yes"
+                        cancelText="No"
+                    >
+                        <Button 
+                            type="text" 
+                            danger 
+                            icon={<DeleteOutlined />}
+                        />
+                    </Popconfirm>
+                ),
+            },
         ]
 
         return (
-            <div id="leagues-area">
-                <h2 className="area-header">Leagues</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            {
-                                columns.map(column => {
-                                    return <th>{column}</th>
-                                })
-                            }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {
-                            this.state.leagues.map((league, index) => {
-                                return <tr>
-                                    <td>{league.leagueId}</td>
-                                    <td>{league.gameKey}</td>
-                                    <td><button onClick={(event) => this.deleteLeague(event, index)}><MdDeleteForever /></button></td>
-                                </tr>
-                            })
-                        }
-                    </tbody>
-                </table>
-                <div>
-                    <div className="add-area">
-                        <input placeholder="League ID" onChange={this.handleLeagueId} value={this.state.leagueId}></input>
-                        <select name="gameKey" onChange={this.handleGameKey} value={this.state.gameKey}>
-                            <option value="" disabled selected>Game Key</option>
-                            {
-                                Array.from(Array(3).keys()).map(num => {
-                                    const val = this.mapToGameKey(num)
-                                    return <option value={val}>{val}</option>
-                                })
-                            }
-                        </select>
-                    </div>
-                    <div className="add-button-area">
-                        <button id="add-button" type="button" onClick={this.addLeague}>Add League</button>
-                    </div>
-                </div>
-            </div>
+            <Card title="Leagues">
+                <Table
+                    columns={columns}
+                    dataSource={this.state.leagues}
+                    rowKey={(record, index) => index}
+                    loading={this.state.loading}
+                    pagination={false}
+                    style={{ marginBottom: 24 }}
+                />
+                
+                <Card type="inner" title="Add New League">
+                    <Form
+                        ref={this.formRef}
+                        layout="vertical"
+                        onFinish={this.addLeague}
+                    >
+                        <Space direction="vertical" style={{ width: '100%' }}>
+                            <Form.Item
+                                name="leagueId"
+                                label="League ID"
+                                rules={[{ required: true, message: 'Please enter league ID' }]}
+                            >
+                                <Input placeholder="Enter your league ID" />
+                            </Form.Item>
+                            
+                            <Form.Item
+                                name="gameKey"
+                                label="Game Key"
+                                rules={[{ required: true, message: 'Please select game key' }]}
+                            >
+                                <Select placeholder="Select game type">
+                                    {Array.from(Array(3).keys()).map(num => {
+                                        const val = this.mapToGameKey(num)
+                                        return <Option key={val} value={val}>{val}</Option>
+                                    })}
+                                </Select>
+                            </Form.Item>
+                            
+                            <Form.Item>
+                                <Button 
+                                    type="primary" 
+                                    htmlType="submit"
+                                    icon={<PlusOutlined />}
+                                >
+                                    Add League
+                                </Button>
+                            </Form.Item>
+                        </Space>
+                    </Form>
+                </Card>
+            </Card>
         )
     }
 }

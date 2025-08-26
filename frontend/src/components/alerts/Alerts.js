@@ -1,6 +1,9 @@
 import React from 'react'
-import './Alerts.scss'
-import { MdDeleteForever } from 'react-icons/md'
+import { Card, Table, Button, Select, Form, Space, Typography, Popconfirm, Row, Col, message } from 'antd'
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons'
+
+const { Title, Link } = Typography
+const { Option } = Select
 
 const months = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"]
@@ -12,30 +15,30 @@ class Alerts extends React.Component {
 
         this.state = {
             alerts: [],
-            addAlert: {
-                type: "",
-                hour: "",
-                minute: "",
-                startMonth: "",
-                endMonth: "",
-                dayOfWeek: "",
-            //    timeZone: ""
-            }
+            loading: true
         }
 
-        this.addAlert = this.addAlert.bind(this)
+        this.formRef = React.createRef()
     }
 
     componentDidMount() {
+        this.fetchAlerts()
+    }
+
+    fetchAlerts = () => {
+        this.setState({ loading: true })
         fetch("/alerts")
             .then(res => res.json())
             .then((result) => {
                 this.setState({
-                    alerts: result
+                    alerts: result,
+                    loading: false
                 })
             },
                 (error) => {
                     console.log(error)
+                    message.error('Failed to load alerts')
+                    this.setState({ loading: false })
                 })
     }
 
@@ -70,79 +73,9 @@ class Alerts extends React.Component {
         return minute
     }
 
-    handleTypeChange = (event) => {
-        this.setState({
-            addAlert: {
-                ...this.state.addAlert,
-                type: parseInt(event.target.value)
-            }
-        })
-    }
-
-    handleHourChange = (event) => {
-        this.setState({
-            addAlert: {
-                ...this.state.addAlert,
-                hour: parseInt(event.target.value)
-            }
-        })
-    }
-
-    handleMinuteChange = (event) => {
-        this.setState({
-            addAlert: {
-                ...this.state.addAlert,
-                minute: parseInt(event.target.value)
-            }
-        })
-    }
-
-    handleStartMonth = (event) => {
-        this.setState({
-            addAlert: {
-                ...this.state.addAlert,
-                startMonth: parseInt(event.target.value)
-            }
-        })
-    }
-
-    handleEndMonth = (event) => {
-        this.setState({
-            addAlert: {
-                ...this.state.addAlert,
-                endMonth: parseInt(event.target.value)
-            }
-        })
-    }
-
-    handleDayOfWeek = (event) => {
-        this.setState({
-            addAlert: {
-                ...this.state.addAlert,
-                dayOfWeek: parseInt(event.target.value)
-            }
-        })
-    }
-
-//    handleTimeZone = (event) => {
-//        this.setState({
-//            addAlert: {
-//                ...this.state.addAlert,
-//                timeZone: event.target.value
-//            }
-//        })
-//    }
-
-    addAlert() {
-        for (const property in this.state.addAlert) {
-            console.log(`${property} ${this.state.addAlert[property]}`)
-            if(this.state.addAlert[property] === "") {
-                return
-            }
-          }
-
+    addAlert = (values) => {
         const alerts = [...this.state.alerts]
-        alerts.push(this.state.addAlert)
+        alerts.push(values)
 
         fetch("/alerts", {
             method: "PUT",
@@ -153,16 +86,18 @@ class Alerts extends React.Component {
             this.setState({
                 alerts: result
             })
+                message.success('Alert added successfully')
+                this.formRef.current.resetFields()
         },
         (error) => {
             console.log(error)
+                    message.error('Failed to add alert')
         })
     }
 
-    deleteAlert(event, index) {
+    deleteAlert = (index) => {
         const alerts = [...this.state.alerts]
         alerts.splice(index, 1)
-        console.log(alerts)
 
         fetch("/alerts", {
             method: "PUT",
@@ -170,117 +105,211 @@ class Alerts extends React.Component {
         })
         .then(res => res.json())
         .then((result) => {
-            console.log(result)
             this.setState({
                 alerts: result
             })
+                message.success('Alert deleted successfully')
         },
         (error) => {
             console.log("Error mate!")
+                    message.error('Failed to delete alert')
         })
-        console.log(this.state)
     }
 
     render() {
         const columns = [
-            "Type",
-            "Hour",
-            "Minute",
-            "Start Month",
-            "End Month",
-            "Day Of Week"
-//            "Time Zone"
+            {
+                title: 'Type',
+                dataIndex: 'type',
+                key: 'type',
+                render: (type) => this.mapToAlertName(type)
+            },
+            {
+                title: 'Hour',
+                dataIndex: 'hour',
+                key: 'hour',
+            },
+            {
+                title: 'Minute',
+                dataIndex: 'minute',
+                key: 'minute',
+                render: (minute) => this.formatMinute(minute)
+            },
+            {
+                title: 'Start Month',
+                dataIndex: 'startMonth',
+                key: 'startMonth',
+                render: (month) => this.mapToMonth(month)
+            },
+            {
+                title: 'End Month',
+                dataIndex: 'endMonth',
+                key: 'endMonth',
+                render: (month) => this.mapToMonth(month)
+            },
+            {
+                title: 'Day Of Week',
+                dataIndex: 'dayOfWeek',
+                key: 'dayOfWeek',
+                render: (day) => this.mapToDayOfWeek(day)
+            },
+            {
+                title: 'Action',
+                key: 'action',
+                render: (_, record, index) => (
+                    <Popconfirm
+                        title="Delete this alert?"
+                        description="Are you sure to delete this alert?"
+                        onConfirm={() => this.deleteAlert(index)}
+                        okText="Yes"
+                        cancelText="No"
+                    >
+                        <Button 
+                            type="text" 
+                            danger 
+                            icon={<DeleteOutlined />}
+                        />
+                    </Popconfirm>
+                ),
+            },
         ]
 
-        // TODO: 12/24hr time conversion
-
         return (
-            <div id="alerts-area">
-                <h2 className="area-header">Alerts (all times are UTC | <a id="utc-converter" href="https://www.timeanddate.com/worldclock/converter.html?iso=20200917T200000&p1=1440">Time Converter</a>)</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            {
-                                columns.map(column => {
-                                    return <th key={column}>{column}</th>
-                                })
-                            }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {
-                            this.state.alerts.map((alert, index) => {
-                                return <tr key={index}>
-                                    <td>{this.mapToAlertName(alert.type)}</td>
-                                    <td>{alert.hour}</td>
-                                    <td>{this.formatMinute(alert.minute)}</td>
-                                    <td>{this.mapToMonth(alert.startMonth)}</td>
-                                    <td>{this.mapToMonth(alert.endMonth)}</td>
-                                    <td>{this.mapToDayOfWeek(alert.dayOfWeek)}</td>
-                                    {/* <td>{alert.timeZone}</td> */}
-                                    <td><button onClick={(event) => this.deleteAlert(event, index)}><MdDeleteForever/></button></td>
-                                </tr>
-                            })
-                        }
-                    </tbody>
-                </table>
-                <div>
-                    <div className="add-area">
-                        <select name="type" defaultValue={""} onChange={this.handleTypeChange} value={this.state.type}>
-                            <option value="" disabled>Type</option>
-                            {
-                                Array.from(Array(4).keys()).map(num => {
-                                    return <option key={num} value={num}>{this.mapToAlertName(num)}</option>
-                                })
-                            }
-                        </select>
-                        <select name="hour" defaultValue={""} onChange={this.handleHourChange} value={this.state.hour}>
-                            <option value="" disabled>Hour</option>
-                            {
-                                Array.from(Array(24).keys()).map(num => {
-                                    return <option key={num} value={num}>{num}</option>
-                                })
-                            }
-                        </select>
-                        <select name="minute" defaultValue={""} onChange={this.handleMinuteChange} value={this.state.minute}>
-                            <option value="" disabled>Minute</option>
-                            {
-                                Array.from(Array(60).keys()).map(num => {
-                                    return <option key={num} value={num}>{num}</option>
-                                })
-                            }
-                        </select>
-                        <select name="startMonth" defaultValue={""} onChange={this.handleStartMonth} value={this.state.startMonth}>
-                            <option value="" disabled>Start Month</option>
-                            {
-                                Array.from(Array(12).keys()).map(num => {
-                                    return <option key={num} value={num + 1}>{this.mapToMonth(num + 1)}</option>
-                                })
-                            }
-                        </select>
-                        <select name="endMonth" defaultValue={""} onChange={this.handleEndMonth} value={this.state.endMonth}>
-                            <option value="" disabled>End Month</option>
-                            {
-                                Array.from(Array(12).keys()).map(num => {
-                                    return <option key={num} value={num + 1}>{this.mapToMonth(num + 1)}</option>
-                                })
-                            }
-                        </select>
-                        <select name="dayOfWeek" defaultValue={""} onChange={this.handleDayOfWeek} value={this.state.dayOfWeek}>
-                            <option value="" disabled>Day Of Week</option>
-                            {
-                                Array.from(Array(7).keys()).map(num => {
-                                    return <option key={num} value={num + 1}>{this.mapToDayOfWeek(num + 1)}</option>
-                                })
-                            }
-                        </select>
-                        {/* <input placeholder="Time Zone" defaultValue={""} onChange={this.handleTimeZone} value={this.state.timeZone}></input> */}
-                    </div>
-                    <div className="add-button-area">
-                        <button id="add-alert-button" type="button" onClick={this.addAlert}>Add Alert</button>
-                    </div>
-                </div>
-            </div>
+            <Card 
+                title={
+                    <Space>
+                        <span>Alerts</span>
+                        <Typography.Text type="secondary" style={{ fontSize: '14px' }}>
+                            (all times are UTC | 
+                            <Link href="https://www.timeanddate.com/worldclock/converter.html?iso=20200917T200000&p1=1440" target="_blank">
+                                {' '}Time Converter
+                            </Link>
+                            )
+                        </Typography.Text>
+                    </Space>
+                }
+            >
+                <Table
+                    columns={columns}
+                    dataSource={this.state.alerts}
+                    rowKey={(record, index) => index}
+                    loading={this.state.loading}
+                    pagination={false}
+                    style={{ marginBottom: 24 }}
+                />
+                
+                <Card type="inner" title="Add New Alert">
+                    <Form
+                        ref={this.formRef}
+                        layout="vertical"
+                        onFinish={this.addAlert}
+                    >
+                        <Row gutter={16}>
+                            <Col xs={24} sm={8} md={4}>
+                                <Form.Item
+                                    name="type"
+                                    label="Type"
+                                    rules={[{ required: true, message: 'Please select alert type' }]}
+                                >
+                                    <Select placeholder="Select type">
+                                        {Array.from(Array(4).keys()).map(num => (
+                                            <Option key={num} value={num}>
+                                                {this.mapToAlertName(num)}
+                                            </Option>
+                                        ))}
+                                    </Select>
+                                </Form.Item>
+                            </Col>
+                            
+                            <Col xs={12} sm={8} md={4}>
+                                <Form.Item
+                                    name="hour"
+                                    label="Hour"
+                                    rules={[{ required: true, message: 'Please select hour' }]}
+                                >
+                                    <Select placeholder="Hour">
+                                        {Array.from(Array(24).keys()).map(num => (
+                                            <Option key={num} value={num}>{num}</Option>
+                                        ))}
+                                    </Select>
+                                </Form.Item>
+                            </Col>
+                            
+                            <Col xs={12} sm={8} md={4}>
+                                <Form.Item
+                                    name="minute"
+                                    label="Minute"
+                                    rules={[{ required: true, message: 'Please select minute' }]}
+                                >
+                                    <Select placeholder="Minute">
+                                        {Array.from(Array(60).keys()).map(num => (
+                                            <Option key={num} value={num}>{num}</Option>
+                                        ))}
+                                    </Select>
+                                </Form.Item>
+                            </Col>
+                            
+                            <Col xs={12} sm={8} md={4}>
+                                <Form.Item
+                                    name="startMonth"
+                                    label="Start Month"
+                                    rules={[{ required: true, message: 'Please select start month' }]}
+                                >
+                                    <Select placeholder="Start Month">
+                                        {Array.from(Array(12).keys()).map(num => (
+                                            <Option key={num + 1} value={num + 1}>
+                                                {this.mapToMonth(num + 1)}
+                                            </Option>
+                                        ))}
+                                    </Select>
+                                </Form.Item>
+                            </Col>
+                            
+                            <Col xs={12} sm={8} md={4}>
+                                <Form.Item
+                                    name="endMonth"
+                                    label="End Month"
+                                    rules={[{ required: true, message: 'Please select end month' }]}
+                                >
+                                    <Select placeholder="End Month">
+                                        {Array.from(Array(12).keys()).map(num => (
+                                            <Option key={num + 1} value={num + 1}>
+                                                {this.mapToMonth(num + 1)}
+                                            </Option>
+                                        ))}
+                                    </Select>
+                                </Form.Item>
+                            </Col>
+                            
+                            <Col xs={24} sm={8} md={4}>
+                                <Form.Item
+                                    name="dayOfWeek"
+                                    label="Day Of Week"
+                                    rules={[{ required: true, message: 'Please select day of week' }]}
+                                >
+                                    <Select placeholder="Day Of Week">
+                                        {Array.from(Array(7).keys()).map(num => (
+                                            <Option key={num + 1} value={num + 1}>
+                                                {this.mapToDayOfWeek(num + 1)}
+                                            </Option>
+                                        ))}
+                                    </Select>
+                                </Form.Item>
+                            </Col>
+                        </Row>
+                        
+                        <Form.Item>
+                            <Button 
+                                type="primary" 
+                                htmlType="submit"
+                                icon={<PlusOutlined />}
+                            >
+                                Add Alert
+                            </Button>
+                        </Form.Item>
+                    </Form>
+                </Card>
+            </Card>
         )
     }
 }
