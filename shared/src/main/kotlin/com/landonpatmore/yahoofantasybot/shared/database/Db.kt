@@ -43,14 +43,24 @@ class Db(
      * Connects to the specified database.
      */
     private fun connect() {
-        // Ensure the URL is in proper JDBC format
+        // Parse and ensure the URL is in proper JDBC format
         val jdbcUrl = when {
             url.startsWith("jdbc:postgresql://") -> url
-            url.startsWith("postgresql://") -> "jdbc:$url"
+            url.startsWith("postgresql://") -> {
+                // Parse PostgreSQL URL format: postgresql://user:pass@host:port/db
+                val regex = Regex("postgresql://([^:]+):([^@]+)@([^:]+):(\\d+)/(.+)")
+                val match = regex.find(url)
+                if (match != null) {
+                    val (user, password, host, port, database) = match.destructured
+                    "jdbc:postgresql://$host:$port/$database?user=$user&password=$password"
+                } else {
+                    "jdbc:$url"
+                }
+            }
             else -> url
         }
         
-        println("Connecting to database: $jdbcUrl")
+        println("Connecting to database: ${jdbcUrl.replace(Regex("password=[^&]+"), "password=***")}")
         
         Database.connect(
             jdbcUrl,
