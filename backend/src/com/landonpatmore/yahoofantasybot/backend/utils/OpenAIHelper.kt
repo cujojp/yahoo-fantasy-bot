@@ -45,12 +45,28 @@ object OpenAIHelper {
         }
         
         return try {
-            val systemPrompt = """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about a fantasy football bot test message.
-                |Keep it under 280 characters. Use insider language and create urgency/excitement.
-                |Use only ONE emoji maximum, preferably 🚨 for breaking news or 🤖 for bot context, or none at all. Make it sound like breaking news about the bot being operational.
-                |Focus on the technology and reliability aspect.""".trimMargin()
+            // Check if the test message contains transaction-like content
+            val isTransactionTest = originalMessage.contains("added", ignoreCase = true) || 
+                                  originalMessage.contains("dropped", ignoreCase = true) || 
+                                  originalMessage.contains("traded", ignoreCase = true)
             
-            val userPrompt = "Test Message: $originalMessage"
+            val systemPrompt = if (isTransactionTest) {
+                """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about this fantasy football transaction.
+                    |Keep it under 280 characters. Use insider language and create urgency/excitement.
+                    |Use only ONE emoji maximum, preferably 🚨 for breaking news or 🏈 for football context, or none at all. Make it sound like breaking news.
+                    |Focus on the fantasy impact and player value. This is a test of the transaction alert system.""".trimMargin()
+            } else {
+                """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about a fantasy football bot test message.
+                    |Keep it under 280 characters. Use insider language and create urgency/excitement.
+                    |Use only ONE emoji maximum, preferably 🚨 for breaking news or 🤖 for bot context, or none at all. Make it sound like breaking news about the bot being operational.
+                    |Focus on the technology and reliability aspect.""".trimMargin()
+            }
+            
+            val userPrompt = if (isTransactionTest) {
+                "Fantasy Transaction: $originalMessage"
+            } else {
+                "Test Message: $originalMessage"
+            }
             
             val requestBody = JSONObject().apply {
                 put("model", MODEL)
