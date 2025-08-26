@@ -46,18 +46,27 @@ class Db(
         // Parse and ensure the URL is in proper JDBC format
         val jdbcUrl = when {
             url.startsWith("jdbc:postgresql://") -> url
-            url.startsWith("postgresql://") -> {
-                // Parse PostgreSQL URL format: postgresql://user:pass@host:port/db
-                val regex = Regex("postgresql://([^:]+):([^@]+)@([^:]+):(\\d+)/(.+)")
+            url.startsWith("postgresql://") || url.startsWith("postgres://") -> {
+                // Parse PostgreSQL URL format: postgresql://user:pass@host:port/db or postgres://user:pass@host:port/db
+                val regex = Regex("postgres(?:ql)?://([^:]+):([^@]+)@([^:]+):(\\d+)/(.+)")
                 val match = regex.find(url)
                 if (match != null) {
                     val (user, password, host, port, database) = match.destructured
-                    "jdbc:postgresql://$host:$port/$database?user=$user&password=$password"
+                    // Remove any query parameters from database name
+                    val cleanDatabase = database.substringBefore('?')
+                    "jdbc:postgresql://$host:$port/$cleanDatabase?user=$user&password=$password"
                 } else {
                     "jdbc:$url"
                 }
             }
-            else -> url
+            else -> {
+                // If no prefix, assume it needs jdbc: prefix
+                if (!url.startsWith("jdbc:")) {
+                    "jdbc:$url"
+                } else {
+                    url
+                }
+            }
         }
         
         println("Connecting to database: ${jdbcUrl.replace(Regex("password=[^&]+"), "password=***")}")
