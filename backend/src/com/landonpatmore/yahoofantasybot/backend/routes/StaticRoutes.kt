@@ -32,11 +32,8 @@ import io.ktor.server.routing.*
 fun Application.serveFrontend() {
     routing {
         static {
-            resource("/", "frontend/index.html")
-
-            static("/static") {
-                resources("frontend/static")
-            }
+            resources("frontend")
+            defaultResource("frontend/index.html")
         }
     }
 }

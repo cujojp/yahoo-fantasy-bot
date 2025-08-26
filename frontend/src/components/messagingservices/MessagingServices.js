@@ -109,7 +109,7 @@ class MessagingServices extends React.Component {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                message: "🤖 Test message from TECHMO BOT!"
+                message: "🤖 Test message from Yahoo Fantasy Bot! If you see this, your webhook is working correctly."
             })
         })
             .then(res => res.json())

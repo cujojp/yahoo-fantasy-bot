@@ -67,13 +67,16 @@ fun Application.module(testing: Boolean = false) {
         allowMethod(HttpMethod.Options)
         allowMethod(HttpMethod.Put)
         allowMethod(HttpMethod.Post)
+        allowMethod(HttpMethod.Delete)
+        allowHeader(HttpHeaders.ContentType)
+        allowHeader(HttpHeaders.Authorization)
         anyHost()
     }
     // TODO: Will move to locations later
 
-    serveFrontend()
     getRoutes(db, getCurrentVersion(this.javaClass.classLoader))
     putRoutes(db)
+    serveFrontend()
 }
 
 private fun getCurrentVersion(classLoader: ClassLoader) : String? {
