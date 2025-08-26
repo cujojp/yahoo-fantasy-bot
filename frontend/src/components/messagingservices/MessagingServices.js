@@ -39,8 +39,8 @@ class MessagingServices extends React.Component {
 
     mapToAlertName(name) {
         switch (name) {
-            case 0: return "Slack"
-            case 1: return "Discord"
+            case 0: return "Discord"
+            case 1: return "Slack"
             case 2: return "GroupMe"
             default: return "N/A"
         }
@@ -48,8 +48,8 @@ class MessagingServices extends React.Component {
 
     mapNameToValue(name) {
         switch (name) {
-            case "Slack": return 0
-            case "Discord": return 1
+            case "Discord": return 0
+            case "Slack": return 1
             case "GroupMe": return 2
             default: return -1
         }
@@ -58,8 +58,8 @@ class MessagingServices extends React.Component {
     addMessagingService = (values) => {
         const messagingServices = [...this.state.messagingServices]
         const newService = {
-            name: this.mapNameToValue(values.name),
-            webHookUrl: values.webHookUrl
+            service: this.mapNameToValue(values.name),
+            url: values.webHookUrl
         }
         messagingServices.push(newService)
 
@@ -122,28 +122,28 @@ class MessagingServices extends React.Component {
     getServiceStatus = (service) => {
         // This is a placeholder - you might want to implement actual status checking
         // For now, we'll assume all configured services are active
-        return service.webHookUrl ? 'active' : 'inactive'
+        return service.url ? 'active' : 'inactive'
     }
 
     render() {
         const columns = [
             {
                 title: 'Service',
-                dataIndex: 'name',
-                key: 'name',
-                render: (name) => (
+                dataIndex: 'service',
+                key: 'service',
+                render: (service) => (
                     <Space>
-                        <span>{this.mapToAlertName(name)}</span>
-                        {name === 0 && <Tag color="purple">Slack</Tag>}
-                        {name === 1 && <Tag color="blue">Discord</Tag>}
-                        {name === 2 && <Tag color="green">GroupMe</Tag>}
+                        <span>{this.mapToAlertName(service)}</span>
+                        {service === 0 && <Tag color="blue">Discord</Tag>}
+                        {service === 1 && <Tag color="purple">Slack</Tag>}
+                        {service === 2 && <Tag color="green">GroupMe</Tag>}
                     </Space>
                 )
             },
             {
                 title: 'Webhook URL',
-                dataIndex: 'webHookUrl',
-                key: 'webHookUrl',
+                dataIndex: 'url',
+                key: 'url',
                 render: (url) => (
                     <Tooltip title={url}>
                         <span style={{ 
