@@ -7,6 +7,6 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-java-time:0.31.1")
     api("io.insert-koin:koin-core:3.2.0")
     implementation("org.jsoup:jsoup:1.15.3")
-    implementation("com.github.scribejava:scribejava-apis:8.3.3")
-    implementation("com.github.scribejava:scribejava-core:8.3.3")
+    api("com.github.scribejava:scribejava-apis:8.3.3")
+    api("com.github.scribejava:scribejava-core:8.3.3")
 }
