@@ -41,6 +41,7 @@ fun Application.putRoutes(db: Db) {
         putLeagues(db)
         putAlerts(db)
         putMessageType(db)
+        postTestMessage(db)
     }
 }
 
@@ -79,4 +80,60 @@ private fun Route.putMessageType(db: Db) {
 private suspend inline fun <reified T> ApplicationCall.receiveJson(): T {
     val json = this.receiveOrNull<String>()
     return Gson().fromJson(json, T::class.java)
+}
+
+private fun Route.postTestMessage(db: Db) {
+    post("/testMessage") {
+        data class TestMessageRequest(val message: String = "🤖 Test message from Yahoo Fantasy Bot! If you see this, your webhook is working correctly.")
+        
+        val request = try {
+            call.receiveJson<TestMessageRequest>()
+        } catch (e: Exception) {
+            TestMessageRequest()
+        }
+        
+        val messagingServices = db.getMessagingServices()
+        val results = mutableMapOf<String, String>()
+        
+        // Send test message to each configured service
+        messagingServices.forEach { service ->
+            when (service.service) {
+                0 -> { // Discord
+                    try {
+                        val response = com.mashape.unirest.http.Unirest.post(service.url)
+                            .header("Content-Type", "application/json")
+                            .body("{\"content\" : \"${request.message}\"}")
+                            .asJson()
+                        results["Discord"] = if (response.status in 200..299) "Success" else "Failed: ${response.status}"
+                    } catch (e: Exception) {
+                        results["Discord"] = "Error: ${e.message}"
+                    }
+                }
+                1 -> { // Slack
+                    try {
+                        val response = com.mashape.unirest.http.Unirest.post(service.url)
+                            .header("Content-Type", "application/json")
+                            .body("{\"text\" : \"${request.message}\"}")
+                            .asJson()
+                        results["Slack"] = if (response.status in 200..299) "Success" else "Failed: ${response.status}"
+                    } catch (e: Exception) {
+                        results["Slack"] = "Error: ${e.message}"
+                    }
+                }
+                2 -> { // GroupMe
+                    try {
+                        val response = com.mashape.unirest.http.Unirest.post("https://api.groupme.com/v3/bots/post")
+                            .header("Content-Type", "application/json")
+                            .body("{\"bot_id\" : \"${service.url}\", \"text\" : \"${request.message}\"}")
+                            .asJson()
+                        results["GroupMe"] = if (response.status in 200..299) "Success" else "Failed: ${response.status}"
+                    } catch (e: Exception) {
+                        results["GroupMe"] = "Error: ${e.message}"
+                    }
+                }
+            }
+        }
+        
+        call.respond(results)
+    }
 }

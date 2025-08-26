@@ -66,6 +66,7 @@ fun Application.module(testing: Boolean = false) {
     install(CORS) {
         allowMethod(HttpMethod.Options)
         allowMethod(HttpMethod.Put)
+        allowMethod(HttpMethod.Post)
         anyHost()
     }
     // TODO: Will move to locations later

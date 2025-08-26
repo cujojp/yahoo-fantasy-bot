@@ -9,10 +9,13 @@ class MessagingServices extends React.Component {
         this.state = {
             messagingServices: [],
             service: "",
-            url: ""
+            url: "",
+            testingMessage: false,
+            testResults: null
         }
 
         this.addMessagingService = this.addMessagingService.bind(this)
+        this.sendTestMessage = this.sendTestMessage.bind(this)
     }
 
     componentDidMount() {
@@ -53,7 +56,7 @@ class MessagingServices extends React.Component {
     addMessagingService() {
         const messagingServices = [...this.state.messagingServices]
         messagingServices.push({
-            service: this.state.service,
+            service: parseInt(this.state.service),
             url: this.state.url
         })
         console.log(messagingServices)
@@ -97,6 +100,39 @@ class MessagingServices extends React.Component {
         console.log(this.state)
     }
 
+    sendTestMessage() {
+        this.setState({ testingMessage: true, testResults: null })
+        
+        fetch("/testMessage", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: "🤖 Test message from TECHMO BOT!"
+            })
+        })
+            .then(res => res.json())
+            .then((result) => {
+                console.log("Test results:", result)
+                this.setState({
+                    testingMessage: false,
+                    testResults: result
+                })
+                // Clear results after 5 seconds
+                setTimeout(() => {
+                    this.setState({ testResults: null })
+                }, 5000)
+            },
+                (error) => {
+                    console.log("Error sending test message:", error)
+                    this.setState({
+                        testingMessage: false,
+                        testResults: { error: "Failed to send test message" }
+                    })
+                })
+    }
+
     render() {
         const columns = [
             "Service",
@@ -119,8 +155,8 @@ class MessagingServices extends React.Component {
                     <tbody>
                         {
                             this.state.messagingServices.map((messagingService, index) => {
-                                return <tr>
-                                    <td>{messagingService.service}</td>
+                                return <tr key={index}>
+                                    <td>{this.mapToService(messagingService.service)}</td>
                                     <td>{messagingService.url}</td>
                                     <td><button onClick={(event) => this.deleteMessagingService(event, index)}><MdDeleteForever /></button></td>
                                 </tr>
@@ -135,7 +171,7 @@ class MessagingServices extends React.Component {
                             {
                                 Array.from(Array(3).keys()).map(num => {
                                     const val = this.mapToService(num)
-                                    return <option value={val}>{val}</option>
+                                    return <option value={num}>{val}</option>
                                 })
                             }
                         </select>
@@ -143,7 +179,26 @@ class MessagingServices extends React.Component {
                     </div>
                     <div className="add-button-area">
                         <button id="add-button" type="button" onClick={this.addMessagingService}>Add Service</button>
+                        <button 
+                            id="test-button" 
+                            type="button" 
+                            onClick={this.sendTestMessage}
+                            disabled={this.state.testingMessage || this.state.messagingServices.length === 0}
+                            style={{ marginLeft: '10px' }}
+                        >
+                            {this.state.testingMessage ? 'Sending...' : 'Test Messages'}
+                        </button>
                     </div>
+                    {this.state.testResults && (
+                        <div className="test-results" style={{ marginTop: '10px', padding: '10px', background: '#f0f0f0', borderRadius: '5px' }}>
+                            <h4>Test Results:</h4>
+                            {Object.entries(this.state.testResults).map(([service, result]) => (
+                                <div key={service}>
+                                    <strong>{service}:</strong> {result}
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         )

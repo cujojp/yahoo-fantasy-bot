@@ -56,6 +56,7 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
     // Other dependencies
     implementation("ch.qos.logback:logback-classic:1.2.1")
+    implementation("com.mashape.unirest:unirest-java:1.4.9")
 }
 
 sourceSets {
@@ -99,7 +100,7 @@ tasks {
     named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
         dependsOn("buildFrontend")
     }
-
+f
     // Fix implicit dependency issues
     named("distTar") {
         dependsOn("shadowJar")
