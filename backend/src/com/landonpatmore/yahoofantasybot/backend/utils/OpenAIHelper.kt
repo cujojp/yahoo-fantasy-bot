@@ -47,7 +47,7 @@ object OpenAIHelper {
         return try {
             val systemPrompt = """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about a fantasy football bot test message.
                 |Keep it under 280 characters. Use insider language and create urgency/excitement.
-                |Include relevant emojis sparingly. Make it sound like breaking news about the bot being operational.
+                |Use only ONE emoji maximum, preferably 🚨 for breaking news or 🤖 for bot context, or none at all. Make it sound like breaking news about the bot being operational.
                 |Focus on the technology and reliability aspect.""".trimMargin()
             
             val userPrompt = "Test Message: $originalMessage"

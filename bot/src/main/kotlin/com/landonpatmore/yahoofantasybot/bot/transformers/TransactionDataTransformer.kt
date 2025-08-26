@@ -229,7 +229,7 @@ private fun commissionerMessage(openAIService: OpenAIService?): Observable<Messa
     val baseMessage = "A league setting has been modified.  You may want to check or ask them what they changed!".bold()
     
     return if (openAIService != null) {
-        val transactionDetails = "Commissioner made changes to league settings"
+        val transactionDetails = "League commissioner has made administrative changes to fantasy league settings. The changes could affect scoring, rosters, waivers, or other league rules that impact all fantasy managers."
         openAIService.generateSchefterTweet("COMMISH CHANGES", transactionDetails)
             .map { tweet ->
                 Message.Transaction.Commish(baseMessage, tweet)

@@ -40,11 +40,18 @@ class OpenAIService(private val apiKey: String) {
     
     fun generateSchefterTweet(transactionType: String, transactionDetails: String): Single<String> {
         return Single.fromCallable {
-            val systemPrompt = """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about a fantasy football transaction.
-                |Keep it under 280 characters. Use insider language and create urgency/excitement.
-                |Include relevant emojis sparingly. Make it sound like breaking news.
-                |Focus on the fantasy impact and player value.
-                |Transaction types: ADD (roster addition), DROP (player release), ADD/DROP (roster move), TRADE (player swap), COMMISH (commissioner action).""".trimMargin()
+            val systemPrompt = when (transactionType) {
+                "COMMISH CHANGES" -> """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about fantasy league administrative changes.
+                    |Keep it under 280 characters. Use insider language and create urgency/excitement.
+                    |Use only ONE emoji maximum, preferably 🚨 for breaking news or none at all. Make it sound like breaking news.
+                    |Focus on how commissioner rule changes affect fantasy managers and league dynamics.
+                    |Avoid mentioning bots or technology - focus on the league governance aspect.""".trimMargin()
+                else -> """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about a fantasy football transaction.
+                    |Keep it under 280 characters. Use insider language and create urgency/excitement.
+                    |Use only ONE emoji maximum, preferably 🚨 for breaking news or 🏈 for football context, or none at all. Make it sound like breaking news.
+                    |Focus on the fantasy impact and player value.
+                    |Transaction types: ADD (roster addition), DROP (player release), ADD/DROP (roster move), TRADE (player swap).""".trimMargin()
+            }
             
             val userPrompt = "Transaction Type: $transactionType\nDetails: $transactionDetails"
             
