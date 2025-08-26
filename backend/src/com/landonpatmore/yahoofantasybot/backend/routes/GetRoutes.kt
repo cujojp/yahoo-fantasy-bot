@@ -142,18 +142,17 @@ private fun versionChecker(
     val currentVersionSplit = currentVersion.split(".")
     val latestVersion = tagName.split(".")
 
-        if (latestVersion.size > currentVersionSplit.size) {
-            return true
-        } else {
-            for ((i, latest) in latestVersion.withIndex()) {
-                when {
-                    latest.toInt() == currentVersionSplit[i].toInt() -> continue
-                    latest.toInt() < currentVersionSplit[i].toInt() -> return false
-                    latest.toInt() > currentVersionSplit[i].toInt() -> return true
-                }
+    if (latestVersion.size > currentVersionSplit.size) {
+        return true
+    } else {
+        for ((i, latest) in latestVersion.withIndex()) {
+            when {
+                latest.toInt() == currentVersionSplit[i].toInt() -> continue
+                latest.toInt() < currentVersionSplit[i].toInt() -> return false
+                latest.toInt() > currentVersionSplit[i].toInt() -> return true
             }
-            return false
         }
+        return false
     }
 }
 
