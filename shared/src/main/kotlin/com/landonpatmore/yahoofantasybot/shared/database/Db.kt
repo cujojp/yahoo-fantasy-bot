@@ -57,14 +57,26 @@ class Db(
             url.startsWith("jdbc:postgresql://") -> url
             url.startsWith("postgresql://") || url.startsWith("postgres://") -> {
                 // Parse PostgreSQL URL format: postgresql://user:pass@host:port/db or postgres://user:pass@host:port/db
-                val regex = Regex("postgres(?:ql)?://([^:]+):([^@]+)@([^:]+):(\\d+)/(.+)")
+                val regex = Regex("postgres(?:ql)?://([^:]+):([^@]+)@([^:/]+)(:[0-9]+)?/(.+)")
                 val match = regex.find(url)
                 if (match != null) {
-                    val (user, password, host, port, database) = match.destructured
-                    // Remove any query parameters from database name
-                    val cleanDatabase = database.substringBefore('?')
-                    "jdbc:postgresql://$host:$port/$cleanDatabase?user=$user&password=$password"
+                    val user = match.groupValues[1]
+                    val password = match.groupValues[2]
+                    val host = match.groupValues[3]
+                    val port = match.groupValues[4].removePrefix(":").ifEmpty { "5432" }
+                    val database = match.groupValues[5].substringBefore('?')
+                    
+                    // Build JDBC URL with proper parameters
+                    val params = mutableListOf("user=$user", "password=$password")
+                    
+                    // Add SSL mode for Railway (they require SSL)
+                    if (host.contains("railway")) {
+                        params.add("sslmode=require")
+                    }
+                    
+                    "jdbc:postgresql://$host:$port/$database?${params.joinToString("&")}"
                 } else {
+                    println("WARNING: Could not parse PostgreSQL URL format: $url")
                     "jdbc:$url"
                 }
             }
@@ -80,10 +92,18 @@ class Db(
         
         println("Connecting to database: ${jdbcUrl.replace(Regex("password=[^&]+"), "password=***")}")
         
-        Database.connect(
-            jdbcUrl,
-            driver = "org.postgresql.Driver"
-        )
+        try {
+            Database.connect(
+                jdbcUrl,
+                driver = "org.postgresql.Driver"
+            )
+            println("Database connection established successfully")
+        } catch (e: Exception) {
+            println("ERROR: Failed to connect to database: ${e.message}")
+            println("Stack trace:")
+            e.printStackTrace()
+            throw e
+        }
     }
 
     /**

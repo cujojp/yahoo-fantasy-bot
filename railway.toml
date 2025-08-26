@@ -2,6 +2,6 @@
 builder = "NIXPACKS"
 
 [deploy]
-startCommand = "chmod +x scripts/start-backend.sh && ./scripts/start-backend.sh"
+startCommand = "chmod +x scripts/railway-env-fix.sh && ./scripts/railway-env-fix.sh java -jar build/libs/backend.jar"
 restartPolicyType = "ON_FAILURE" 
 restartPolicyMaxRetries = 10
