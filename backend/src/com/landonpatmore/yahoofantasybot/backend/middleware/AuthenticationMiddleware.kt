@@ -29,6 +29,7 @@ import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.ktor.server.sessions.*
 import io.ktor.util.*
 import org.koin.ktor.ext.inject
@@ -104,55 +105,53 @@ class AuthenticationMiddleware {
 }
 
 /**
- * Ktor plugin for authentication middleware
+ * Simple authentication checker function for routes
  */
-val AuthenticationPlugin = createApplicationPlugin(name = "AuthenticationPlugin") {
+suspend fun ApplicationCall.checkAuthentication(database: Db): Boolean {
+    val path = request.local.uri
     
-    onCall { call ->
-        val database by inject<Db>()
-        val path = call.request.uri
-        
-        // Skip authentication if not required or route is public
-        if (!AuthenticationMiddleware.isAuthenticationRequired() || 
-            AuthenticationMiddleware.isPublicRoute(path)) {
-            return@onCall
-        }
-        
-        // Get current session
-        val session = call.sessions.get<UserSession>()
-        
-        // Check if user is authenticated
-        val isAuthenticated = when {
-            session == null -> false
-            session.isExpired() -> {
-                // Clear expired session
-                call.sessions.clear<UserSession>()
-                false
-            }
-            !session.isAuthenticated -> false
-            // Additional check: verify token still exists in database
-            database.getLatestTokenData() == null -> {
-                call.sessions.clear<UserSession>()
-                false
-            }
-            else -> true
-        }
-        
-        if (!isAuthenticated) {
-            // For API routes, return JSON error
-            if (path.startsWith("/api/")) {
-                call.respond(HttpStatusCode.Unauthorized, mapOf(
-                    "error" to "Authentication required",
-                    "message" to "Please authenticate with Yahoo to access this resource"
-                ))
-                return@onCall
-            }
-            
-            // For web routes, redirect to authentication
-            call.respondRedirect("/authenticate")
-            return@onCall
-        }
+    // Skip authentication if not required or route is public
+    if (!AuthenticationMiddleware.isAuthenticationRequired() || 
+        AuthenticationMiddleware.isPublicRoute(path)) {
+        return true
     }
+    
+    // Get current session
+    val session = sessions.get<UserSession>()
+    
+    // Check if user is authenticated
+    val isAuthenticated = when {
+        session == null -> false
+        session.isExpired() -> {
+            // Clear expired session
+            sessions.clear<UserSession>()
+            false
+        }
+        !session.isAuthenticated -> false
+        // Additional check: verify token still exists in database
+        database.getLatestTokenData() == null -> {
+            sessions.clear<UserSession>()
+            false
+        }
+        else -> true
+    }
+    
+    if (!isAuthenticated) {
+        // For API routes, return JSON error
+        if (path.startsWith("/api/")) {
+            respond(HttpStatusCode.Unauthorized, mapOf(
+                "error" to "Authentication required",
+                "message" to "Please authenticate with Yahoo to access this resource"
+            ))
+            return false
+        }
+        
+        // For web routes, redirect to authentication
+        respondRedirect("/authenticate")
+        return false
+    }
+    
+    return true
 }
 
 /**
@@ -187,64 +186,62 @@ fun Application.configureSession() {
 /**
  * Updates authentication routes with session support
  */
-fun Application.configureAuthenticationRoutes(database: Db) {
-    routing {
-        // Enhanced checkAuth with session support
-        get("/checkAuth") {
-            val session = call.sessions.get<UserSession>()
-            val hasToken = database.getLatestTokenData() != null
-            
-            val isAuthenticated = when {
-                !AuthenticationMiddleware.isAuthenticationRequired() -> hasToken
-                session?.isAuthenticated == true && !session.isExpired() && hasToken -> true
-                else -> false
-            }
-            
-            call.respond(mapOf(
-                "authenticated" to isAuthenticated,
-                "authRequired" to AuthenticationMiddleware.isAuthenticationRequired(),
-                "environment" to (System.getenv("RAILWAY_ENVIRONMENT") ?: "development")
-            ))
+fun Route.configureAuthenticationRoutes(database: Db) {
+    // Enhanced checkAuth with session support
+    get("/checkAuth") {
+        val session = call.sessions.get<UserSession>()
+        val hasToken = database.getLatestTokenData() != null
+        
+        val isAuthenticated = when {
+            !AuthenticationMiddleware.isAuthenticationRequired() -> hasToken
+            session?.isAuthenticated == true && !session.isExpired() && hasToken -> true
+            else -> false
         }
         
-        // Enhanced auth callback with session creation
-        get("/auth") {
-            try {
-                val code = call.request.queryParameters["code"]
-                if (code != null) {
-                    // This would be handled by the existing OAuth service
-                    // For now, we'll create a session when token is saved
-                    database.getLatestTokenData()?.let {
-                        // Create authenticated session
-                        call.sessions.set(UserSession(
-                            isAuthenticated = true,
-                            yahooUserId = "yahoo_user", // Could extract from token
-                            sessionCreatedAt = System.currentTimeMillis()
-                        ))
-                    }
+        call.respond(mapOf(
+            "authenticated" to isAuthenticated,
+            "authRequired" to AuthenticationMiddleware.isAuthenticationRequired(),
+            "environment" to (System.getenv("RAILWAY_ENVIRONMENT") ?: "development")
+        ))
+    }
+    
+    // Enhanced auth callback with session creation
+    get("/auth") {
+        try {
+            val code = call.request.queryParameters["code"]
+            if (code != null) {
+                // This would be handled by the existing OAuth service
+                // For now, we'll create a session when token is saved
+                database.getLatestTokenData()?.let {
+                    // Create authenticated session
+                    call.sessions.set(UserSession(
+                        isAuthenticated = true,
+                        yahooUserId = "yahoo_user", // Could extract from token
+                        sessionCreatedAt = System.currentTimeMillis()
+                    ))
                 }
-                call.respondRedirect("/")
-            } catch (e: Exception) {
-                println("Authentication error: ${e.message}")
-                call.respondRedirect("/authenticate?error=auth_failed")
             }
+            call.respondRedirect("/")
+        } catch (e: Exception) {
+            println("Authentication error: ${e.message}")
+            call.respondRedirect("/authenticate?error=auth_failed")
         }
-        
-        // Add logout endpoint
-        get("/logout") {
-            call.sessions.clear<UserSession>()
-            // Optionally clear the database token as well
-            // database.clearTokens() // If this method exists
-            call.respondRedirect("/?logged_out=true")
-        }
-        
-        // Health check endpoint for Railway
-        get("/health") {
-            call.respond(HttpStatusCode.OK, mapOf(
-                "status" to "healthy",
-                "timestamp" to System.currentTimeMillis(),
-                "version" to (System.getenv("VERSION") ?: "unknown")
-            ))
-        }
+    }
+    
+    // Add logout endpoint
+    get("/logout") {
+        call.sessions.clear<UserSession>()
+        // Optionally clear the database token as well
+        // database.clearTokens() // If this method exists
+        call.respondRedirect("/?logged_out=true")
+    }
+    
+    // Health check endpoint for Railway
+    get("/health") {
+        call.respond(HttpStatusCode.OK, mapOf(
+            "status" to "healthy",
+            "timestamp" to System.currentTimeMillis(),
+            "version" to (System.getenv("VERSION") ?: "unknown")
+        ))
     }
 }

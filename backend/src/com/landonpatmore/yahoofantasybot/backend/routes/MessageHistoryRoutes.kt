@@ -30,15 +30,56 @@ import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
-import org.koin.ktor.ext.inject
+import org.koin.core.context.GlobalContext
+
+/**
+ * API response model for message history
+ */
+data class MessageHistoryApiResponse(
+    val id: String,
+    val timestamp: String,
+    val messageType: String,
+    val transactionType: String?,
+    val messagingService: String,
+    val originalMessage: String,
+    val schefterTweet: String?,
+    val finalContent: String,
+    val success: Boolean,
+    val errorMessage: String?,
+    val playersInvolved: List<String>?,
+    val responseCode: Int?,
+    val hasSchefterTweet: Boolean,
+    val description: String
+)
+
+/**
+ * Extension function to convert MessageHistory to API response
+ */
+internal fun MessageHistory.toApiResponse(): MessageHistoryApiResponse {
+    return MessageHistoryApiResponse(
+        id = id.toString(),
+        timestamp = timestamp.toString(),
+        messageType = messageType,
+        transactionType = transactionType,
+        messagingService = messagingService,
+        originalMessage = originalMessage,
+        schefterTweet = schefterTweet,
+        finalContent = finalContent,
+        success = success,
+        errorMessage = errorMessage,
+        playersInvolved = playersInvolved,
+        responseCode = responseCode,
+        hasSchefterTweet = hasSchefterTweet(),
+        description = getDescription()
+    )
+}
 
 /**
  * API routes for message history
  */
 fun Route.messageHistoryRouting() {
-    val database by inject<Db>()
-
     route("/api/messageHistory") {
+        val database: Db = GlobalContext.get().get()
         
         // Get recent message history
         get {
@@ -110,46 +151,4 @@ fun Route.messageHistoryRouting() {
             }
         }
     }
-}
-
-/**
- * API response model for message history
- */
-data class MessageHistoryApiResponse(
-    val id: String,
-    val timestamp: String,
-    val messageType: String,
-    val transactionType: String?,
-    val messagingService: String,
-    val originalMessage: String,
-    val schefterTweet: String?,
-    val finalContent: String,
-    val success: Boolean,
-    val errorMessage: String?,
-    val playersInvolved: List<String>?,
-    val responseCode: Int?,
-    val hasSchefterTweet: Boolean,
-    val description: String
-)
-
-/**
- * Extension function to convert MessageHistory to API response
- */
-private fun MessageHistory.toApiResponse(): MessageHistoryApiResponse {
-    return MessageHistoryApiResponse(
-        id = id.toString(),
-        timestamp = timestamp.toString(),
-        messageType = messageType,
-        transactionType = transactionType,
-        messagingService = messagingService,
-        originalMessage = originalMessage,
-        schefterTweet = schefterTweet,
-        finalContent = finalContent,
-        success = success,
-        errorMessage = errorMessage,
-        playersInvolved = playersInvolved,
-        responseCode = responseCode,
-        hasSchefterTweet = hasSchefterTweet(),
-        description = getDescription()
-    )
 }

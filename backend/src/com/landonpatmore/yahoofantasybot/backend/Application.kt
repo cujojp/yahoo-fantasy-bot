@@ -28,7 +28,6 @@ import com.landonpatmore.yahoofantasybot.backend.routes.getRoutes
 import com.landonpatmore.yahoofantasybot.backend.routes.putRoutes
 import com.landonpatmore.yahoofantasybot.backend.routes.serveFrontend
 import com.landonpatmore.yahoofantasybot.backend.routes.messageHistoryRouting
-import com.landonpatmore.yahoofantasybot.backend.middleware.AuthenticationPlugin
 import com.landonpatmore.yahoofantasybot.backend.middleware.configureSession
 import com.landonpatmore.yahoofantasybot.backend.middleware.configureAuthenticationRoutes
 import io.ktor.server.application.*
@@ -38,7 +37,7 @@ import io.ktor.server.plugins.compression.*
 // import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.plugins.cors.*
 import io.ktor.server.plugins.defaultheaders.*
-
+import io.ktor.server.routing.*
 import org.koin.core.context.startKoin
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import org.koin.core.context.GlobalContext
@@ -62,9 +61,6 @@ fun Application.module(testing: Boolean = false) {
 
     // Configure session management for authentication
     configureSession()
-    
-    // Install authentication middleware
-    install(AuthenticationPlugin)
 
     install(DefaultHeaders) {
         header("X-Engine", "Ktor") // will send this header with each response
@@ -108,15 +104,13 @@ fun Application.module(testing: Boolean = false) {
         }
     }
 
-    // Configure enhanced authentication routes
-    configureAuthenticationRoutes(db)
-    
     // Regular routes  
     getRoutes(db, getCurrentVersion(this.javaClass.classLoader))
     putRoutes(db)
     
-    // Additional routes
+    // Additional routes with authentication
     routing {
+        configureAuthenticationRoutes(db)
         messageHistoryRouting()
     }
     
