@@ -11,7 +11,9 @@
     "dev:db:start": "docker-compose up -d postgres",
     "dev:db:stop": "docker-compose down",
     "dev:db:logs": "docker-compose logs postgres",
-    "dev:frontend": "cd frontend && npm start"
+    "dev:frontend": "cd frontend && npm start",
+    "dev:https:setup": "./scripts/setup-local-https.sh",
+    "dev:https:backend": "./scripts/run-https-backend.sh"
   },
   "devDependencies": {},
   "private": true
