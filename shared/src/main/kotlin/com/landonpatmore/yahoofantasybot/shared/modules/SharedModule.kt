@@ -31,5 +31,26 @@ import org.koin.dsl.module
 
 val sharedModule = module {
     single { EnvVariablesChecker() }
-    single { Db(EnvVariable.Str.JdbcDatabaseUrl.variable) }
+    single { 
+        // Get the database URL at runtime, not at class initialization
+        val jdbcUrl = System.getenv("JDBC_DATABASE_URL")
+        val dbUrl = System.getenv("DATABASE_URL")
+        
+        println("SharedModule - Creating Db instance:")
+        println("  JDBC_DATABASE_URL: ${jdbcUrl ?: "not set"}")
+        println("  DATABASE_URL: ${dbUrl ?: "not set"}")
+        
+        val urlToUse = when {
+            !jdbcUrl.isNullOrEmpty() && jdbcUrl != "\$DATABASE_URL" -> jdbcUrl
+            !dbUrl.isNullOrEmpty() -> dbUrl
+            else -> {
+                println("ERROR: No database URL found in environment variables!")
+                println("Available env vars: ${System.getenv().keys.sorted().joinToString(", ")}")
+                throw IllegalStateException("Database URL not configured. Please set JDBC_DATABASE_URL or DATABASE_URL in Railway environment variables.")
+            }
+        }
+        
+        println("  Using URL: $urlToUse")
+        Db(urlToUse)
+    }
 }

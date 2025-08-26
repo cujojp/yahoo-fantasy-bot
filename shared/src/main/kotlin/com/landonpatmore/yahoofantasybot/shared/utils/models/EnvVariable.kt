@@ -37,32 +37,8 @@ sealed class EnvVariable {
         object DiscordWebhookUrl : Str(System.getenv("DISCORD_WEBHOOK_URL") ?: "", true)
         object SlackWebhookUrl : Str(System.getenv("SLACK_WEBHOOK_URL") ?: "", true)
         object OpenAIApiKey : Str(System.getenv("OPENAI_API_KEY") ?: "", true)
-        object JdbcDatabaseUrl : Str(
-            System.getenv("JDBC_DATABASE_URL").let { jdbcUrl ->
-                val databaseUrl = System.getenv("DATABASE_URL")
-                println("EnvVariable.JdbcDatabaseUrl initialization:")
-                println("  JDBC_DATABASE_URL from env: ${jdbcUrl ?: "null"}")
-                println("  DATABASE_URL from env: ${databaseUrl ?: "null"}")
-                
-                val result = when {
-                    !jdbcUrl.isNullOrEmpty() && jdbcUrl != "\$DATABASE_URL" -> {
-                        println("  Using JDBC_DATABASE_URL: $jdbcUrl")
-                        jdbcUrl
-                    }
-                    !databaseUrl.isNullOrEmpty() -> {
-                        println("  Using DATABASE_URL: $databaseUrl")
-                        databaseUrl
-                    }
-                    else -> {
-                        // Provide a clear placeholder that will fail fast
-                        println("  WARNING: No database URL found in environment!")
-                        "NO_DATABASE_URL_SET"
-                    }
-                }
-                println("  Final result: $result")
-                result
-            }
-        )
+        // Note: This is now handled directly in SharedModule to avoid reading env vars at class init time
+        object JdbcDatabaseUrl : Str("HANDLED_IN_SHARED_MODULE")
     }
 
     sealed class Integer(val variable: Int) : EnvVariable() {
