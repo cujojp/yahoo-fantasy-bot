@@ -94,9 +94,12 @@ private fun Route.postTestMessage(db: Db) {
         }
         
         // Generate Schefter-style tweet if OpenAI is configured
+        println("Attempting to generate Schefter tweet for message: ${request.message}")
         val schefterTweet = OpenAIHelper.generateTestMessageSchefterTweet(request.message)
+        println("Schefter tweet result: ${if (schefterTweet != null) "Generated successfully" else "Not generated"}")
+        
         val fullMessage = if (schefterTweet != null) {
-            "${request.message}\n\n🏈 $schefterTweet"
+            "${request.message}\n\n$schefterTweet"
         } else {
             request.message
         }

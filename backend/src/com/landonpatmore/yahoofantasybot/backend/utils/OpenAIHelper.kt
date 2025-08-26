@@ -37,7 +37,10 @@ object OpenAIHelper {
     
     fun generateTestMessageSchefterTweet(originalMessage: String): String? {
         val apiKey = EnvVariable.Str.OpenAIApiKey.variable
+        println("OpenAI API Key check: ${if (apiKey.isNotEmpty()) "Present (length: ${apiKey.length})" else "Not set"}")
+        
         if (apiKey.isEmpty()) {
+            println("OpenAI API key not configured - skipping Schefter tweet generation")
             return null
         }
         
@@ -71,18 +74,24 @@ object OpenAIHelper {
                 .body(requestBody)
                 .asJson()
             
+            println("OpenAI API Response Status: ${response.status}")
+            
             if (response.status == 200) {
-                response.body.`object`
+                val generatedTweet = response.body.`object`
                     .getJSONArray("choices")
                     .getJSONObject(0)
                     .getJSONObject("message")
                     .getString("content")
                     .trim()
+                println("Generated Schefter tweet: $generatedTweet")
+                generatedTweet
             } else {
+                println("OpenAI API error response: ${response.body}")
                 null
             }
         } catch (e: Exception) {
             println("OpenAI error: ${e.message}")
+            e.printStackTrace()
             null
         }
     }
