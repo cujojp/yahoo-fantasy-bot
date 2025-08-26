@@ -100,7 +100,7 @@ tasks {
     named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
         dependsOn("buildFrontend")
     }
-f
+
     // Fix implicit dependency issues
     named("distTar") {
         dependsOn("shadowJar")
