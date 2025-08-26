@@ -80,7 +80,7 @@ class YahooNewsService(
         
         // Check cache first
         newsCache[cacheKey]?.let { (cachedNews, timestamp) ->
-            if (timestamp.isAfter(LocalDateTime.now().minusMinutes(CACHE_DURATION_MINUTES))) {
+            if (timestamp.isAfter(LocalDateTime.now().minusMinutes(CACHE_DURATION_MINUTES.toLong()))) {
                 return cachedNews
             }
         }
@@ -162,7 +162,7 @@ class YahooNewsService(
             // Look for common news fields in Yahoo responses
             val newsItems = doc.select("news, headline, summary, description")
             
-            newsItems.take(2).joinToString(" ") { element ->
+            newsItems.take(2).joinToString(" ") { element: org.jsoup.nodes.Element ->
                 element.text().take(100) // Limit length
             }.trim()
         } catch (e: Exception) {
