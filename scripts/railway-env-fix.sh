@@ -17,13 +17,13 @@ if [ -n "$DATABASE_URL" ]; then
         USER="${BASH_REMATCH[2]}"
         PASSWORD="${BASH_REMATCH[3]}"
         HOST="${BASH_REMATCH[4]}"
-        PORT="${BASH_REMATCH[5]:-:5432}"  # Default to :5432 if not specified
-        PORT="${PORT#:}"  # Remove leading colon
+        DB_PORT="${BASH_REMATCH[5]:-:5432}"  # Default to :5432 if not specified
+        DB_PORT="${DB_PORT#:}"  # Remove leading colon
         DATABASE="${BASH_REMATCH[6]%%\?*}"  # Remove query params
         
         echo "Parsed database connection:"
         echo "  Host: $HOST"
-        echo "  Port: $PORT"
+        echo "  Port: $DB_PORT"
         echo "  Database: $DATABASE"
         echo "  User: $USER"
         
@@ -33,9 +33,9 @@ if [ -n "$DATABASE_URL" ]; then
             echo "Detected Railway internal host: $HOST"
             # For Railway, the database might be named differently
             # Common patterns: railway, postgres, or the service name
-            JDBC_URL="jdbc:postgresql://$HOST:$PORT/$DATABASE"
+            JDBC_URL="jdbc:postgresql://$HOST:$DB_PORT/$DATABASE"
         else
-            JDBC_URL="jdbc:postgresql://$HOST:$PORT/$DATABASE"
+            JDBC_URL="jdbc:postgresql://$HOST:$DB_PORT/$DATABASE"
         fi
         
         # Add user and password as query parameters
