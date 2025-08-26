@@ -29,6 +29,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 import com.landonpatmore.yahoofantasybot.shared.services.PlayerInfo
+import com.landonpatmore.yahoofantasybot.shared.services.YahooNewsService
 
 object OpenAIHelper {
     private const val OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
@@ -36,7 +37,7 @@ object OpenAIHelper {
     private const val MAX_TOKENS = 280
     private const val TEMPERATURE = 0.8
     
-    fun generateTestMessageSchefterTweet(originalMessage: String): String? {
+    fun generateTestMessageSchefterTweet(originalMessage: String, yahooNewsService: YahooNewsService? = null): String? {
         val apiKey = EnvVariable.Str.OpenAIApiKey.variable
         println("OpenAI API Key check: ${if (apiKey.isNotEmpty()) "Present (length: ${apiKey.length})" else "Not set"}")
         
@@ -73,10 +74,24 @@ object OpenAIHelper {
             val enhancedUserPrompt = if (isTransactionTest) {
                 buildString {
                     append(userPrompt)
-                    // Extract player names for potential context
-                    val playerNames = extractPlayerNamesFromMessage(originalMessage)
-                    if (playerNames.isNotEmpty()) {
-                        append("\nPlayers involved: ${playerNames.joinToString(", ")}")
+                    
+                    // Extract players and get news context if available
+                    val players = extractPlayersFromMessage(originalMessage)
+                    
+                    if (players.isNotEmpty()) {
+                        append("\nPlayers involved: ${players.map { it.name }.joinToString(", ")}")
+                        
+                        // Add Yahoo news context if available
+                        if (yahooNewsService != null) {
+                            println("OpenAIHelper: Yahoo News Service available, fetching news context...")
+                            val newsContext = yahooNewsService.generateNewsContext(players)
+                            if (newsContext.isNotEmpty()) {
+                                append("\n$newsContext")
+                                println("OpenAIHelper: Added news context: $newsContext")
+                            }
+                        } else {
+                            println("OpenAIHelper: No Yahoo News Service available for test message")
+                        }
                     }
                 }
             } else {
@@ -128,36 +143,51 @@ object OpenAIHelper {
     }
     
     /**
-     * Extracts player names from a transaction message for enhanced context
+     * Extracts players from a transaction message for enhanced context
      */
-    private fun extractPlayerNamesFromMessage(message: String): List<String> {
-        val playerNames = mutableListOf<String>()
+    private fun extractPlayersFromMessage(message: String): List<PlayerInfo> {
+        val players = mutableListOf<PlayerInfo>()
         
         // Simple regex patterns to extract names from common formats
         // "Player Name (TEAM, POS)" format
-        val playerPattern = Regex("""([A-Z][a-z]+ [A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s*\([A-Z]{2,4},\s*[A-Z]+\)""")
+        val playerPattern = Regex("""([A-Z][a-z]+ [A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s*\(([A-Z]{2,4}),\s*([A-Z]+)\)""")
         val matches = playerPattern.findAll(message)
         
         matches.forEach { match ->
             val playerName = match.groupValues[1].trim()
-            if (playerName.isNotEmpty() && !playerNames.contains(playerName)) {
-                playerNames.add(playerName)
+            val team = match.groupValues[2].trim()
+            val position = match.groupValues[3].trim()
+            
+            if (playerName.isNotEmpty() && !players.any { it.name == playerName }) {
+                players.add(PlayerInfo(
+                    name = playerName,
+                    nflTeam = team,
+                    position = position,
+                    playerId = null,
+                    playerKey = null
+                ))
             }
         }
         
         // Fallback: look for capitalized names (less reliable)
-        if (playerNames.isEmpty()) {
+        if (players.isEmpty()) {
             val namePattern = Regex("""([A-Z][a-z]+\s+[A-Z][a-z]+)""")
             val nameMatches = namePattern.findAll(message)
             nameMatches.take(3).forEach { match ->
                 val name = match.groupValues[1]
                 // Filter out common non-player words
                 if (!name.matches(Regex("(added|dropped|traded|received|Team|Name|League).*", RegexOption.IGNORE_CASE))) {
-                    playerNames.add(name)
+                    players.add(PlayerInfo(
+                        name = name,
+                        nflTeam = "Unknown",
+                        position = "Unknown",
+                        playerId = null,
+                        playerKey = null
+                    ))
                 }
             }
         }
         
-        return playerNames.take(3) // Limit to 3 players for context
+        return players.take(3) // Limit to 3 players for context
     }
 }

@@ -25,10 +25,12 @@
 package com.landonpatmore.yahoofantasybot.backend.routes
 
 import com.google.gson.Gson
+import com.landonpatmore.yahoofantasybot.backend.utils.BackendOAuthManager
 import com.landonpatmore.yahoofantasybot.backend.utils.OpenAIHelper
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.database.models.Alert
 import com.landonpatmore.yahoofantasybot.shared.database.models.League
+import com.landonpatmore.yahoofantasybot.shared.database.models.MessageHistory
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessageType
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessagingService
 import io.ktor.server.application.*
@@ -93,9 +95,13 @@ private fun Route.postTestMessage(db: Db) {
             TestMessageRequest()
         }
         
+        // Create YahooNewsService if OAuth is available
+        val oauthManager = BackendOAuthManager(db)
+        val yahooNewsService = oauthManager.createYahooNewsService()
+        
         // Generate Schefter-style tweet if OpenAI is configured
         println("Attempting to generate Schefter tweet for message: ${request.message}")
-        val schefterTweet = OpenAIHelper.generateTestMessageSchefterTweet(request.message)
+        val schefterTweet = OpenAIHelper.generateTestMessageSchefterTweet(request.message, yahooNewsService)
         println("Schefter tweet result: ${if (schefterTweet != null) "Generated successfully" else "Not generated"}")
         
         val fullMessage = if (schefterTweet != null) {
@@ -109,52 +115,88 @@ private fun Route.postTestMessage(db: Db) {
         
         // Send test message to each configured service
         messagingServices.forEach { service ->
-            // Skip empty URLs
-            if (service.url.isBlank()) {
-                val serviceName = when (service.service) {
-                    0 -> "Discord"
-                    1 -> "Slack"
-                    2 -> "GroupMe"
-                    else -> "Unknown"
-                }
-                results[serviceName] = "Error: Empty webhook URL"
-                return@forEach
+            val serviceName = when (service.service) {
+                0 -> "Discord"
+                1 -> "Slack"
+                2 -> "GroupMe"
+                else -> "Unknown"
             }
             
-            when (service.service) {
-                0 -> { // Discord
-                    try {
-                        val response = com.mashape.unirest.http.Unirest.post(service.url)
-                            .header("Content-Type", "application/json")
-                            .body("{\"content\" : \"${fullMessage.replace("\"", "\\\\\"\"").replace("\n", "\\n")}\"}")  
-                            .asJson()
-                        results["Discord"] = if (response.status in 200..299) "Success" else "Failed: ${response.status}"
-                    } catch (e: Exception) {
-                        results["Discord"] = "Error: ${e.message}"
+            var responseCode: Int? = null
+            var success = false
+            var errorMessage: String? = null
+            
+            // Skip empty URLs
+            if (service.url.isBlank()) {
+                errorMessage = "Empty webhook URL"
+                results[serviceName] = "Error: $errorMessage"
+            } else {
+                when (service.service) {
+                    0 -> { // Discord
+                        try {
+                            val response = com.mashape.unirest.http.Unirest.post(service.url)
+                                .header("Content-Type", "application/json")
+                                .body("{\"content\" : \"${fullMessage.replace("\"", "\\\\\"\"").replace("\n", "\\n")}\"}")  
+                                .asJson()
+                            responseCode = response.status
+                            success = response.status in 200..299
+                            results["Discord"] = if (success) "Success" else "Failed: ${response.status}"
+                        } catch (e: Exception) {
+                            errorMessage = e.message
+                            results["Discord"] = "Error: $errorMessage"
+                        }
+                    }
+                    1 -> { // Slack
+                        try {
+                            val response = com.mashape.unirest.http.Unirest.post(service.url)
+                                .header("Content-Type", "application/json")
+                                .body("{\"text\" : \"${fullMessage.replace("\"", "\\\\\"\"").replace("\n", "\\n")}\"}")
+                                .asJson()
+                            responseCode = response.status
+                            success = response.status in 200..299
+                            results["Slack"] = if (success) "Success" else "Failed: ${response.status}"
+                        } catch (e: Exception) {
+                            errorMessage = e.message
+                            results["Slack"] = "Error: $errorMessage"
+                        }
+                    }
+                    2 -> { // GroupMe
+                        try {
+                            val response = com.mashape.unirest.http.Unirest.post("https://api.groupme.com/v3/bots/post")
+                                .header("Content-Type", "application/json")
+                                .body("{\"bot_id\" : \"${service.url}\", \"text\" : \"${fullMessage.replace("\"", "\\\\\"\"").replace("\n", "\\n")}\"}")
+                                .asJson()
+                            responseCode = response.status
+                            success = response.status in 200..299
+                            results["GroupMe"] = if (success) "Success" else "Failed: ${response.status}"
+                        } catch (e: Exception) {
+                            errorMessage = e.message
+                            results["GroupMe"] = "Error: $errorMessage"
+                        }
                     }
                 }
-                1 -> { // Slack
-                    try {
-                        val response = com.mashape.unirest.http.Unirest.post(service.url)
-                            .header("Content-Type", "application/json")
-                            .body("{\"text\" : \"${fullMessage.replace("\"", "\\\\\"\"").replace("\n", "\\n")}\"}")
-                            .asJson()
-                        results["Slack"] = if (response.status in 200..299) "Success" else "Failed: ${response.status}"
-                    } catch (e: Exception) {
-                        results["Slack"] = "Error: ${e.message}"
-                    }
-                }
-                2 -> { // GroupMe
-                    try {
-                        val response = com.mashape.unirest.http.Unirest.post("https://api.groupme.com/v3/bots/post")
-                            .header("Content-Type", "application/json")
-                            .body("{\"bot_id\" : \"${service.url}\", \"text\" : \"${fullMessage.replace("\"", "\\\\\"\"").replace("\n", "\\n")}\"}")
-                            .asJson()
-                        results["GroupMe"] = if (response.status in 200..299) "Success" else "Failed: ${response.status}"
-                    } catch (e: Exception) {
-                        results["GroupMe"] = "Error: ${e.message}"
-                    }
-                }
+            }
+            
+            // Save test message to history
+            try {
+                val messageHistory = MessageHistory(
+                    timestamp = System.currentTimeMillis(),
+                    messageType = MessageHistory.TYPE_TEST,
+                    transactionType = null,
+                    messagingService = serviceName.uppercase(),
+                    originalMessage = request.message,
+                    schefterTweet = schefterTweet,
+                    finalContent = fullMessage,
+                    success = success,
+                    errorMessage = errorMessage,
+                    playersInvolved = null,
+                    responseCode = responseCode
+                )
+                
+                db.saveMessageHistory(messageHistory)
+                println("Test message saved to history: ${messageHistory.getDescription()}")
+            } catch (e: Exception) {
+                println("Failed to save test message to history: ${e.message}")
             }
         }
         
