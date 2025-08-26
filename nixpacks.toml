@@ -4,6 +4,9 @@ nixPkgs = ['...', 'nodejs', 'yarn']
 [phases.build]
 cmds = [
     'chmod +x ./gradlew',
+    'cd frontend && npm install && npm run build && cd ..',
+    'rm -rf backend/resources/frontend',
+    'cp -r frontend/build backend/resources/frontend',
     './gradlew clean',
     './gradlew :backend:clean :backend:build :backend:shadowJar --no-daemon -x test',
     'mkdir -p build/libs',
