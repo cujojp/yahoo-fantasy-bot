@@ -1,6 +1,9 @@
 import React from 'react'
 import './MainArea.scss'
 import Alerts from '../alerts/Alerts'
+import MessagingServices from '../messagingservices/MessagingServices'
+import Leagues from '../leagues/Leagues'
+import MessageType from '../messagetype/MessageType'
 
 class MainArea extends React.Component {
     constructor(props) {
@@ -32,9 +35,9 @@ class MainArea extends React.Component {
             return <div id="main-area">
                 <h1 id="dashboard-text">Dashboard</h1>
                 <Alerts/>
-                {/* <Leagues/>
+                <Leagues/>
                 <MessagingServices/>
-                <MessageType/> */}
+                <MessageType/>
             </div>
         } else {
             return <div><a href="/authenticate"><button id="auth-button">Authenticate</button></a></div>
