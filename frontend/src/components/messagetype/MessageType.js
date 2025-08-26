@@ -60,6 +60,9 @@ class MessageType extends React.Component {
 
         fetch("/messageType", {
             method: "PUT",
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify({
                 type: this.state.type
             })

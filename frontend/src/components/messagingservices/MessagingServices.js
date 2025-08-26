@@ -65,20 +65,34 @@ class MessagingServices extends React.Component {
 
         fetch("/messagingServices", {
             method: "PUT",
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify(messagingServices)
         })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`)
+                }
+                return res.text()
+            })
+            .then(text => {
+                if (!text) {
+                    throw new Error("Empty response from server")
+                }
+                return JSON.parse(text)
+            })
             .then((result) => {
                 this.setState({
                     messagingServices: result
                 })
                 message.success('Messaging service added successfully')
                 this.formRef.current.resetFields()
-            },
-                (error) => {
-                    console.log(error)
-                    message.error('Failed to add messaging service')
-                })
+            })
+            .catch((error) => {
+                console.error('Failed to add messaging service:', error)
+                message.error('Failed to add messaging service. Server error.')
+            })
     }
 
     deleteMessagingService = (index) => {
@@ -87,6 +101,9 @@ class MessagingServices extends React.Component {
 
         fetch("/messagingServices", {
             method: "PUT",
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify(messagingServices)
         })
             .then(res => res.json())

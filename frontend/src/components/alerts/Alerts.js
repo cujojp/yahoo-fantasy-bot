@@ -79,6 +79,9 @@ class Alerts extends React.Component {
 
         fetch("/alerts", {
             method: "PUT",
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify(alerts)
         })
         .then(res => res.json())
@@ -101,6 +104,9 @@ class Alerts extends React.Component {
 
         fetch("/alerts", {
             method: "PUT",
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify(alerts)
         })
         .then(res => res.json())

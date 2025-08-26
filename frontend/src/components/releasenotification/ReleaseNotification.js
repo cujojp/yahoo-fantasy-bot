@@ -20,15 +20,35 @@ class ReleaseNotification extends React.Component {
 
     componentDidMount() {
         fetch("/releaseInformation")
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`)
+                }
+                return res.text()
+            })
+            .then(text => {
+                if (!text) {
+                    throw new Error("Empty response from server")
+                }
+                return JSON.parse(text)
+            })
             .then((result) => {
                 this.setState({
                     releaseInformation: result
                 })
-            },
-                (error) => {
-                    console.log(error)
+            })
+            .catch((error) => {
+                console.error("Failed to fetch release information:", error)
+                // Set a default state so the component can still render
+                this.setState({
+                    releaseInformation: {
+                        upgrade: false,
+                        currentVersion: 'Unknown',
+                        latestVersion: 'Unknown',
+                        changelog: 'Unable to fetch release information'
+                    }
                 })
+            })
     }
 
     showNotification() {

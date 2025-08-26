@@ -56,6 +56,9 @@ class Leagues extends React.Component {
 
         fetch("/leagues", {
             method: "PUT",
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify(leagues)
         })
             .then(res => res.json())
@@ -79,6 +82,9 @@ class Leagues extends React.Component {
 
         fetch("/leagues", {
             method: "PUT",
+            headers: {
+                'Content-Type': 'application/json',
+            },
             body: JSON.stringify(leagues)
         })
             .then(res => res.json())
