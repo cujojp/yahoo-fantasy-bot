@@ -89,8 +89,8 @@ private fun Route.getReleaseInformation(currentVersion: String?) {
         }.use { client ->
             client.get(ReleaseInformation.URL).body<ReleaseInformation>()
         }.apply {
-            this.currentVersion = currentVersion
-            upgrade = versionChecker(currentVersion, latestVersion)
+            this.currentVersion = currentVersion ?: "0.0.0"
+            upgrade = versionChecker(this.currentVersion, latestVersion)
             if (!upgrade) {
                 changelog = null
             }
@@ -137,9 +137,10 @@ private fun versionChecker(
 ): Boolean {
     if (currentVersion == null) {
         return false // since we cannot determine our current version for some reason
-    } else {
-        val currentVersionSplit = currentVersion.split(".")
-        val latestVersion = tagName.split(".")
+    }
+    
+    val currentVersionSplit = currentVersion.split(".")
+    val latestVersion = tagName.split(".")
 
         if (latestVersion.size > currentVersionSplit.size) {
             return true
