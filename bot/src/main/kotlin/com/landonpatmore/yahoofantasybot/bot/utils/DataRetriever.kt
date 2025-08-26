@@ -33,6 +33,7 @@ import com.github.scribejava.core.model.Verb
 import com.landonpatmore.yahoofantasybot.bot.utils.models.YahooApiRequest
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
+import com.landonpatmore.yahoofantasybot.shared.services.YahooNewsService
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.parser.Parser
@@ -122,6 +123,15 @@ class DataRetriever(private val database: Db) : IDataRetriever {
 
     override fun getTeamsData(): Document {
         return grabData(BASE_URL + leagueUrl + SCOREBOARD)
+    }
+    
+    /**
+     * Creates a YahooNewsService using this DataRetriever's OAuth configuration
+     */
+    fun createYahooNewsService(): YahooNewsService? {
+        return currentToken?.let { (_, token) ->
+            YahooNewsService(oauthService, token)
+        }
     }
 
     companion object {

@@ -29,6 +29,7 @@ import com.landonpatmore.yahoofantasybot.bot.messaging.GroupMe
 import com.landonpatmore.yahoofantasybot.bot.messaging.IMessagingService
 import com.landonpatmore.yahoofantasybot.bot.messaging.Slack
 import com.landonpatmore.yahoofantasybot.bot.services.OpenAIService
+import com.landonpatmore.yahoofantasybot.bot.utils.DataRetriever
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 import org.koin.dsl.module
 
@@ -39,7 +40,9 @@ val messagingModule = module {
     single { 
         val apiKey = EnvVariable.Str.OpenAIApiKey.variable
         if (apiKey.isNotEmpty()) {
-            OpenAIService(apiKey)
+            val dataRetriever = get<DataRetriever>()
+            val yahooNewsService = dataRetriever.createYahooNewsService()
+            OpenAIService(apiKey, yahooNewsService)
         } else {
             null
         }
