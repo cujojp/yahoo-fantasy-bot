@@ -44,11 +44,13 @@ class Db(
      */
     private fun connect() {
         // Ensure the URL is in proper JDBC format
-        val jdbcUrl = if (url.startsWith("postgresql://")) {
-            "jdbc:$url"
-        } else {
-            url
+        val jdbcUrl = when {
+            url.startsWith("jdbc:postgresql://") -> url
+            url.startsWith("postgresql://") -> "jdbc:$url"
+            else -> url
         }
+        
+        println("Connecting to database: $jdbcUrl")
         
         Database.connect(
             jdbcUrl,

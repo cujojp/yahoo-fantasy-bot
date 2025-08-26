@@ -4,10 +4,12 @@ nixPkgs = ['...', 'nodejs', 'yarn']
 [phases.build]
 cmds = [
     'chmod +x ./gradlew',
+    './gradlew clean',
     './gradlew :backend:clean :backend:build :backend:shadowJar --no-daemon -x test',
     'mkdir -p build/libs',
     'cp backend/build/libs/*.jar build/libs/ || true',
-    'ls -la build/libs/'
+    'ls -la build/libs/',
+    'echo "Build completed at $(date)"'
 ]
 
 [start]
