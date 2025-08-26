@@ -27,6 +27,7 @@ package com.landonpatmore.yahoofantasybot.bot.utils
 import com.landonpatmore.yahoofantasybot.bot.bridges.*
 import com.landonpatmore.yahoofantasybot.bot.messaging.IMessagingService
 import com.landonpatmore.yahoofantasybot.bot.messaging.Message
+import com.landonpatmore.yahoofantasybot.bot.services.OpenAIService
 import com.landonpatmore.yahoofantasybot.bot.transformers.*
 import com.landonpatmore.yahoofantasybot.bot.utils.models.Configuration
 import com.landonpatmore.yahoofantasybot.bot.utils.models.YahooApiRequest
@@ -45,7 +46,8 @@ class Arbiter(
     private val matchUpBridge: MatchUpBridge,
     private val configurationBridge: ConfigurationBridge,
     private val messagingServices: List<IMessagingService>,
-    private val database: Db
+    private val database: Db,
+    private val openAIService: OpenAIService? = null
 ) {
 
     private fun setup() {
@@ -104,7 +106,7 @@ class Arbiter(
 
     private fun setupTransactionsBridge() {
         val transactions = transactionsBridge.eventStream
-            .convertToTransactionMessage()
+            .convertToTransactionMessage(openAIService)
 
         transactions.subscribe(messageBridge.consumer)
     }

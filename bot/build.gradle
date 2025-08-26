@@ -17,6 +17,9 @@ dependencies {
     implementation("io.insert-koin:koin-core:3.2.0")
     implementation("io.insert-koin:koin-ktor:3.2.0")
     implementation("io.insert-koin:koin-logger-slf4j:3.2.0")
+    
+    // JSON parsing (already included with unirest, but adding explicitly)
+    implementation("org.json:json:20210307")
 }
 
 // Fix implicit dependency issues

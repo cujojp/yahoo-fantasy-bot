@@ -28,6 +28,7 @@ import com.landonpatmore.yahoofantasybot.bot.messaging.Discord
 import com.landonpatmore.yahoofantasybot.bot.messaging.GroupMe
 import com.landonpatmore.yahoofantasybot.bot.messaging.IMessagingService
 import com.landonpatmore.yahoofantasybot.bot.messaging.Slack
+import com.landonpatmore.yahoofantasybot.bot.services.OpenAIService
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 import org.koin.dsl.module
 
@@ -35,6 +36,14 @@ val messagingModule = module {
     single { Discord(EnvVariable.Str.DiscordWebhookUrl.variable) }
     single { Slack(EnvVariable.Str.SlackWebhookUrl.variable) }
     single { GroupMe(EnvVariable.Str.GroupMeBotId.variable) }
+    single { 
+        val apiKey = EnvVariable.Str.OpenAIApiKey.variable
+        if (apiKey.isNotEmpty()) {
+            OpenAIService(apiKey)
+        } else {
+            null
+        }
+    }
     single {
         listOf<IMessagingService>(
             get<Discord>(),

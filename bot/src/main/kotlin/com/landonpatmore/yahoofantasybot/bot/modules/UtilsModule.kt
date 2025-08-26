@@ -45,7 +45,8 @@ val utilsModule = module {
             get(),
             get(),
             get(),
-            get()
+            get(),
+            getOrNull()
         )
     }
 }

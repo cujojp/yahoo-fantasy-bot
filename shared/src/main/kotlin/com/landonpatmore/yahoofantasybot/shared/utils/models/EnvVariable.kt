@@ -36,6 +36,7 @@ sealed class EnvVariable {
         object GroupMeBotId : Str(System.getenv("GROUP_ME_BOT_ID") ?: "", true)
         object DiscordWebhookUrl : Str(System.getenv("DISCORD_WEBHOOK_URL") ?: "", true)
         object SlackWebhookUrl : Str(System.getenv("SLACK_WEBHOOK_URL") ?: "", true)
+        object OpenAIApiKey : Str(System.getenv("OPENAI_API_KEY") ?: "", true)
         object JdbcDatabaseUrl : Str(
             System.getenv("JDBC_DATABASE_URL").let { 
                 if (it == null || it.isEmpty() || it == "\$DATABASE_URL") {

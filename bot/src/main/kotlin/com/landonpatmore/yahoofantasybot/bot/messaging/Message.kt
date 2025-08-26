@@ -24,19 +24,19 @@
 
 package com.landonpatmore.yahoofantasybot.bot.messaging
 
-sealed class Message(val title: String, val message: String) {
+sealed class Message(val title: String, val message: String, val schefterTweet: String? = null) {
     class Score(message: String) : Message("Score", message)
     class CloseScore(message: String) : Message("Close Score", message)
     class MatchUp(message: String) : Message("Match Up", message)
     class Standings(message: String) : Message("Standings", message)
     class Generic(message: String) : Message("Message", message)
     class Unknown(message: String) : Message("", message)
-    sealed class Transaction(title: String, message: String) :
-        Message(title, message) {
-        class Add(message: String) : Transaction("Add", message)
-        class Drop(message: String) : Transaction("Drop", message)
-        class AddDrop(message: String) : Transaction("Add/Drop", message)
-        class Trade(message: String) : Transaction("Trade", message)
-        class Commish(message: String) : Transaction("Commish", message)
+    sealed class Transaction(title: String, message: String, schefterTweet: String? = null) :
+        Message(title, message, schefterTweet) {
+        class Add(message: String, schefterTweet: String? = null) : Transaction("Add", message, schefterTweet)
+        class Drop(message: String, schefterTweet: String? = null) : Transaction("Drop", message, schefterTweet)
+        class AddDrop(message: String, schefterTweet: String? = null) : Transaction("Add/Drop", message, schefterTweet)
+        class Trade(message: String, schefterTweet: String? = null) : Transaction("Trade", message, schefterTweet)
+        class Commish(message: String, schefterTweet: String? = null) : Transaction("Commish", message, schefterTweet)
     }
 }

@@ -25,6 +25,7 @@
 package com.landonpatmore.yahoofantasybot.backend.routes
 
 import com.google.gson.Gson
+import com.landonpatmore.yahoofantasybot.backend.utils.OpenAIHelper
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.database.models.Alert
 import com.landonpatmore.yahoofantasybot.shared.database.models.League
@@ -92,6 +93,14 @@ private fun Route.postTestMessage(db: Db) {
             TestMessageRequest()
         }
         
+        // Generate Schefter-style tweet if OpenAI is configured
+        val schefterTweet = OpenAIHelper.generateTestMessageSchefterTweet(request.message)
+        val fullMessage = if (schefterTweet != null) {
+            "${request.message}\n\n🏈 $schefterTweet"
+        } else {
+            request.message
+        }
+        
         val messagingServices = db.getMessagingServices()
         val results = mutableMapOf<String, String>()
         
@@ -114,7 +123,7 @@ private fun Route.postTestMessage(db: Db) {
                     try {
                         val response = com.mashape.unirest.http.Unirest.post(service.url)
                             .header("Content-Type", "application/json")
-                            .body("{\"content\" : \"${request.message}\"}")
+                            .body("{\"content\" : \"${fullMessage.replace("\"", "\\\\\"\"").replace("\n", "\\n")}\"}")  
                             .asJson()
                         results["Discord"] = if (response.status in 200..299) "Success" else "Failed: ${response.status}"
                     } catch (e: Exception) {
@@ -125,7 +134,7 @@ private fun Route.postTestMessage(db: Db) {
                     try {
                         val response = com.mashape.unirest.http.Unirest.post(service.url)
                             .header("Content-Type", "application/json")
-                            .body("{\"text\" : \"${request.message}\"}")
+                            .body("{\"text\" : \"${fullMessage.replace("\"", "\\\\\"\"").replace("\n", "\\n")}\"}")
                             .asJson()
                         results["Slack"] = if (response.status in 200..299) "Success" else "Failed: ${response.status}"
                     } catch (e: Exception) {
@@ -136,7 +145,7 @@ private fun Route.postTestMessage(db: Db) {
                     try {
                         val response = com.mashape.unirest.http.Unirest.post("https://api.groupme.com/v3/bots/post")
                             .header("Content-Type", "application/json")
-                            .body("{\"bot_id\" : \"${service.url}\", \"text\" : \"${request.message}\"}")
+                            .body("{\"bot_id\" : \"${service.url}\", \"text\" : \"${fullMessage.replace("\"", "\\\\\"\"").replace("\n", "\\n")}\"}")
                             .asJson()
                         results["GroupMe"] = if (response.status in 200..299) "Success" else "Failed: ${response.status}"
                     } catch (e: Exception) {
@@ -144,6 +153,11 @@ private fun Route.postTestMessage(db: Db) {
                     }
                 }
             }
+        }
+        
+        // Add info about Schefter tweet
+        if (schefterTweet != null) {
+            results["SchefterTweet"] = "Generated successfully"
         }
         
         call.respond(results)

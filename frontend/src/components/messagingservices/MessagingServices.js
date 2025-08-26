@@ -149,8 +149,13 @@ class MessagingServices extends React.Component {
                 let successCount = 0
                 let failureCount = 0
                 let resultMessages = []
+                let hasSchefterTweet = false
                 
                 Object.entries(results).forEach(([service, status]) => {
+                    if (service === 'SchefterTweet') {
+                        hasSchefterTweet = true
+                        return
+                    }
                     if (status === "Success") {
                         successCount++
                         resultMessages.push(`✅ ${service}: ${status}`)
@@ -164,12 +169,19 @@ class MessagingServices extends React.Component {
                     title: 'Test Message Results',
                     content: (
                         <div>
-                            <p>Sent test message to {Object.keys(results).length} service(s):</p>
+                            <p>Sent test message to {resultMessages.length} service(s):</p>
                             <div style={{ marginTop: 10 }}>
                                 {resultMessages.map((msg) => (
                                     <div key={msg} style={{ marginBottom: 5 }}>{msg}</div>
                                 ))}
                             </div>
+                            {hasSchefterTweet && (
+                                <div style={{ marginTop: 10, padding: 10, backgroundColor: '#f0f2f5', borderRadius: 4 }}>
+                                    <p style={{ margin: 0, color: '#1890ff' }}>
+                                        🏈 Schefter-style tweet was included with the message!
+                                    </p>
+                                </div>
+                            )}
                             {successCount > 0 && <p style={{ marginTop: 10, color: '#52c41a' }}>✅ {successCount} successful</p>}
                             {failureCount > 0 && <p style={{ color: '#ff4d4f' }}>❌ {failureCount} failed</p>}
                         </div>

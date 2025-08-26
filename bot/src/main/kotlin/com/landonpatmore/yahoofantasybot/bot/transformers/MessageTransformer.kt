@@ -32,7 +32,12 @@ fun Observable<Message>.convertToMessageInfo(): Observable<Pair<String, String>>
     filter {
         it !is Message.Unknown
     }.map {
-        Pair(createTitle(it.title), it.message)
+        val messageContent = if (it.schefterTweet != null) {
+            "${it.message}\\n\\n🏈 ${it.schefterTweet}"
+        } else {
+            it.message
+        }
+        Pair(createTitle(it.title), messageContent)
     }.filter {
         it.second.isNotEmpty()
     }
