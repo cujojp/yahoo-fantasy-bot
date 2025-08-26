@@ -43,8 +43,15 @@ class Db(
      * Connects to the specified database.
      */
     private fun connect() {
+        // Ensure the URL is in proper JDBC format
+        val jdbcUrl = if (url.startsWith("postgresql://")) {
+            "jdbc:$url"
+        } else {
+            url
+        }
+        
         Database.connect(
-            url,
+            jdbcUrl,
             driver = "org.postgresql.Driver"
         )
     }
