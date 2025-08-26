@@ -54,10 +54,16 @@ class MessagingServices extends React.Component {
     }
 
     addMessagingService() {
+        // Validate inputs
+        if (!this.state.service || this.state.url.trim() === '') {
+            alert('Please select a service and enter a valid URL');
+            return;
+        }
+        
         const messagingServices = [...this.state.messagingServices]
         messagingServices.push({
             service: parseInt(this.state.service),
-            url: this.state.url
+            url: this.state.url.trim()
         })
         console.log(messagingServices)
 

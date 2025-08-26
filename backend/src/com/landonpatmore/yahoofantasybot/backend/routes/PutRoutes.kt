@@ -97,6 +97,18 @@ private fun Route.postTestMessage(db: Db) {
         
         // Send test message to each configured service
         messagingServices.forEach { service ->
+            // Skip empty URLs
+            if (service.url.isBlank()) {
+                val serviceName = when (service.service) {
+                    0 -> "Discord"
+                    1 -> "Slack"
+                    2 -> "GroupMe"
+                    else -> "Unknown"
+                }
+                results[serviceName] = "Error: Empty webhook URL"
+                return@forEach
+            }
+            
             when (service.service) {
                 0 -> { // Discord
                     try {
