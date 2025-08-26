@@ -41,6 +41,7 @@ dependencies {
     implementation("io.ktor:ktor-server-call-logging:$ktorVersion")
     implementation("io.ktor:ktor-server-cors:$ktorVersion")
     implementation("io.ktor:ktor-server-default-headers:$ktorVersion")
+    implementation("io.ktor:ktor-server-sessions:$ktorVersion")
     
     // Ktor client dependencies
     implementation("io.ktor:ktor-client-core:$ktorVersion")

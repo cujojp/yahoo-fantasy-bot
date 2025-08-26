@@ -37,6 +37,8 @@ sealed class EnvVariable {
         object DiscordWebhookUrl : Str(System.getenv("DISCORD_WEBHOOK_URL") ?: "", true)
         object SlackWebhookUrl : Str(System.getenv("SLACK_WEBHOOK_URL") ?: "", true)
         object OpenAIApiKey : Str(System.getenv("OPENAI_API_KEY") ?: "", true)
+        object ForceAuthentication : Str(System.getenv("FORCE_AUTHENTICATION") ?: "false", true)
+        object SessionSecretKey : Str(System.getenv("SESSION_SECRET_KEY") ?: "", true)
         // Note: This is now handled directly in SharedModule to avoid reading env vars at class init time
         object JdbcDatabaseUrl : Str("HANDLED_IN_SHARED_MODULE")
     }

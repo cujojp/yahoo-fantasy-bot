@@ -28,9 +28,12 @@ import com.landonpatmore.yahoofantasybot.bot.messaging.Discord
 import com.landonpatmore.yahoofantasybot.bot.messaging.GroupMe
 import com.landonpatmore.yahoofantasybot.bot.messaging.IMessagingService
 import com.landonpatmore.yahoofantasybot.bot.messaging.Slack
+import com.landonpatmore.yahoofantasybot.bot.messaging.EnhancedMessagingService
 import com.landonpatmore.yahoofantasybot.bot.services.OpenAIService
 import com.landonpatmore.yahoofantasybot.bot.utils.DataRetriever
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
+import com.landonpatmore.yahoofantasybot.shared.database.Db
+import com.landonpatmore.yahoofantasybot.shared.database.models.MessageHistory
 import org.koin.dsl.module
 
 val messagingModule = module {
@@ -48,10 +51,11 @@ val messagingModule = module {
         }
     }
     single {
+        val database = get<Db>()
         listOf<IMessagingService>(
-            get<Discord>(),
-            get<Slack>(),
-            get<GroupMe>()
+            EnhancedMessagingService(get<Discord>(), MessageHistory.SERVICE_DISCORD, database),
+            EnhancedMessagingService(get<Slack>(), MessageHistory.SERVICE_SLACK, database),
+            EnhancedMessagingService(get<GroupMe>(), MessageHistory.SERVICE_GROUPME, database)
         )
     }
 }

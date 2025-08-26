@@ -123,7 +123,7 @@ class Db(
             SchemaUtils.create(
                 LatestTimesTable, StartupMessageTable, TokensTable,
                 MessagingServicesTable, MessageTypeTable, AlertsTable,
-                LeaguesTable
+                LeaguesTable, MessageHistoryTable
             )
         }
     }
@@ -354,6 +354,109 @@ class Db(
                 .map { it[column] }
 
             table.deleteWhere { column inList list }
+        }
+    }
+
+    /**
+     * Saves a message history record
+     */
+    fun saveMessageHistory(messageHistory: MessageHistory) {
+        transaction {
+            MessageHistoryTable.insert { stmt ->
+                stmt[timestamp] = messageHistory.timestamp
+                stmt[messageType] = messageHistory.messageType
+                stmt[transactionType] = messageHistory.transactionType
+                stmt[messagingService] = messageHistory.messagingService
+                stmt[originalMessage] = messageHistory.originalMessage
+                stmt[schefterTweet] = messageHistory.schefterTweet
+                stmt[finalContent] = messageHistory.finalContent
+                stmt[success] = messageHistory.success
+                stmt[errorMessage] = messageHistory.errorMessage
+                stmt[playersInvolved] = messageHistory.playersInvolved?.joinToString(",")
+                stmt[responseCode] = messageHistory.responseCode
+            }
+        }
+        println("MessageHistory: Saved ${messageHistory.getDescription()}")
+    }
+
+    /**
+     * Gets recent message history (last 100 messages)
+     */
+    fun getRecentMessageHistory(limit: Int = 100): List<MessageHistory> {
+        return transaction {
+            MessageHistoryTable.selectAll()
+                .orderBy(MessageHistoryTable.timestamp, SortOrder.DESC)
+                .limit(limit)
+                .map { row ->
+                    MessageHistory(
+                        id = row[MessageHistoryTable.id].value,
+                        timestamp = row[MessageHistoryTable.timestamp],
+                        messageType = row[MessageHistoryTable.messageType],
+                        transactionType = row[MessageHistoryTable.transactionType],
+                        messagingService = row[MessageHistoryTable.messagingService],
+                        originalMessage = row[MessageHistoryTable.originalMessage],
+                        schefterTweet = row[MessageHistoryTable.schefterTweet],
+                        finalContent = row[MessageHistoryTable.finalContent],
+                        success = row[MessageHistoryTable.success],
+                        errorMessage = row[MessageHistoryTable.errorMessage],
+                        playersInvolved = row[MessageHistoryTable.playersInvolved]?.split(",")?.filter { it.isNotEmpty() },
+                        responseCode = row[MessageHistoryTable.responseCode]
+                    )
+                }
+        }
+    }
+
+    /**
+     * Gets message history filtered by type
+     */
+    fun getMessageHistoryByType(messageType: String, limit: Int = 50): List<MessageHistory> {
+        return transaction {
+            MessageHistoryTable.select { MessageHistoryTable.messageType eq messageType }
+                .orderBy(MessageHistoryTable.timestamp, SortOrder.DESC)
+                .limit(limit)
+                .map { row ->
+                    MessageHistory(
+                        id = row[MessageHistoryTable.id].value,
+                        timestamp = row[MessageHistoryTable.timestamp],
+                        messageType = row[MessageHistoryTable.messageType],
+                        transactionType = row[MessageHistoryTable.transactionType],
+                        messagingService = row[MessageHistoryTable.messagingService],
+                        originalMessage = row[MessageHistoryTable.originalMessage],
+                        schefterTweet = row[MessageHistoryTable.schefterTweet],
+                        finalContent = row[MessageHistoryTable.finalContent],
+                        success = row[MessageHistoryTable.success],
+                        errorMessage = row[MessageHistoryTable.errorMessage],
+                        playersInvolved = row[MessageHistoryTable.playersInvolved]?.split(",")?.filter { it.isNotEmpty() },
+                        responseCode = row[MessageHistoryTable.responseCode]
+                    )
+                }
+        }
+    }
+
+    /**
+     * Gets message history statistics 
+     */
+    fun getMessageHistoryStats(): Map<String, Any> {
+        return transaction {
+            val totalMessages = MessageHistoryTable.selectAll().count()
+            val successfulMessages = MessageHistoryTable.select { MessageHistoryTable.success eq true }.count()
+            val schefterTweets = MessageHistoryTable.select { MessageHistoryTable.schefterTweet.isNotNull() }.count()
+            
+            val messagesByType = MessageHistoryTable
+                .slice(MessageHistoryTable.messageType, MessageHistoryTable.messageType.count())
+                .selectAll()
+                .groupBy(MessageHistoryTable.messageType)
+                .associate { row -> 
+                    row[MessageHistoryTable.messageType] to row[MessageHistoryTable.messageType.count()]
+                }
+
+            mapOf(
+                "totalMessages" to totalMessages,
+                "successfulMessages" to successfulMessages,
+                "failedMessages" to (totalMessages - successfulMessages),
+                "schefterTweetsGenerated" to schefterTweets,
+                "messagesByType" to messagesByType
+            )
         }
     }
 }
