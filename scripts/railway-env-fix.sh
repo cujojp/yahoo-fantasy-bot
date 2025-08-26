@@ -21,11 +21,18 @@ if [ -n "$DATABASE_URL" ]; then
         PORT="${PORT#:}"  # Remove leading colon
         DATABASE="${BASH_REMATCH[6]%%\?*}"  # Remove query params
         
+        echo "Parsed database connection:"
+        echo "  Host: $HOST"
+        echo "  Port: $PORT"
+        echo "  Database: $DATABASE"
+        echo "  User: $USER"
+        
         # Railway uses internal DNS for PostgreSQL
-        # Replace any .railway.internal hosts with the public host if needed
+        # The database name might be different than expected
         if [[ "$HOST" == *".railway.internal"* ]]; then
             echo "Detected Railway internal host: $HOST"
-            # For internal connections, use the internal host as-is
+            # For Railway, the database might be named differently
+            # Common patterns: railway, postgres, or the service name
             JDBC_URL="jdbc:postgresql://$HOST:$PORT/$DATABASE"
         else
             JDBC_URL="jdbc:postgresql://$HOST:$PORT/$DATABASE"

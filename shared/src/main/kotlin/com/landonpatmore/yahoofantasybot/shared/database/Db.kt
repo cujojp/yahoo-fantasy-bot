@@ -100,6 +100,15 @@ class Db(
             println("Database connection established successfully")
         } catch (e: Exception) {
             println("ERROR: Failed to connect to database: ${e.message}")
+            
+            // Special handling for "database does not exist" error
+            if (e.message?.contains("does not exist") == true) {
+                println("Database might not exist. This could be a Railway configuration issue.")
+                println("Railway typically creates a database with the same name as the service.")
+                println("Please check your Railway PostgreSQL service configuration.")
+                println("The DATABASE_URL should point to an existing database.")
+            }
+            
             println("Stack trace:")
             e.printStackTrace()
             throw e

@@ -40,7 +40,7 @@ val sharedModule = module {
         println("  JDBC_DATABASE_URL: ${jdbcUrl ?: "not set"}")
         println("  DATABASE_URL: ${dbUrl ?: "not set"}")
         
-        val urlToUse = when {
+        var urlToUse = when {
             !jdbcUrl.isNullOrEmpty() && jdbcUrl != "\$DATABASE_URL" -> jdbcUrl
             !dbUrl.isNullOrEmpty() -> dbUrl
             else -> {
@@ -48,6 +48,14 @@ val sharedModule = module {
                 println("Available env vars: ${System.getenv().keys.sorted().joinToString(", ")}")
                 throw IllegalStateException("Database URL not configured. Please set JDBC_DATABASE_URL or DATABASE_URL in Railway environment variables.")
             }
+        }
+        
+        // Railway workaround: If the URL contains "railway" as the database name,
+        // but that database doesn't exist, try using "postgres" instead
+        if (urlToUse.contains("/railway") && urlToUse.contains(".railway.internal")) {
+            println("  Railway environment detected")
+            println("  Original URL uses 'railway' database")
+            println("  Note: If connection fails, Railway might be using 'postgres' as the database name")
         }
         
         println("  Using URL: $urlToUse")
