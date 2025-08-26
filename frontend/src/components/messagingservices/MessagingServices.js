@@ -1,6 +1,6 @@
 import React from 'react'
-import { Card, Table, Button, Input, Form, Space, message, Popconfirm, Tag, Tooltip, Select } from 'antd'
-import { DeleteOutlined, PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined } from '@ant-design/icons'
+import { Card, Table, Button, Input, Form, Space, message, Popconfirm, Tag, Tooltip, Select, Modal } from 'antd'
+import { DeleteOutlined, PlusOutlined, CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined, SendOutlined } from '@ant-design/icons'
 
 const { Option } = Select
 
@@ -10,10 +10,13 @@ class MessagingServices extends React.Component {
 
         this.state = {
             messagingServices: [],
-            loading: true
+            loading: true,
+            testModalVisible: false,
+            testMessageLoading: false
         }
 
         this.formRef = React.createRef()
+        this.testFormRef = React.createRef()
     }
 
     componentDidMount() {
@@ -125,6 +128,75 @@ class MessagingServices extends React.Component {
         return service.url ? 'active' : 'inactive'
     }
 
+    sendTestMessage = (values) => {
+        this.setState({ testMessageLoading: true })
+        
+        fetch("/testMessage", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message: values.message || undefined })
+        })
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`)
+                }
+                return res.json()
+            })
+            .then((results) => {
+                // Display results
+                let successCount = 0
+                let failureCount = 0
+                let resultMessages = []
+                
+                Object.entries(results).forEach(([service, status]) => {
+                    if (status === "Success") {
+                        successCount++
+                        resultMessages.push(`✅ ${service}: ${status}`)
+                    } else {
+                        failureCount++
+                        resultMessages.push(`❌ ${service}: ${status}`)
+                    }
+                })
+                
+                Modal.info({
+                    title: 'Test Message Results',
+                    content: (
+                        <div>
+                            <p>Sent test message to {Object.keys(results).length} service(s):</p>
+                            <div style={{ marginTop: 10 }}>
+                                {resultMessages.map((msg) => (
+                                    <div key={msg} style={{ marginBottom: 5 }}>{msg}</div>
+                                ))}
+                            </div>
+                            {successCount > 0 && <p style={{ marginTop: 10, color: '#52c41a' }}>✅ {successCount} successful</p>}
+                            {failureCount > 0 && <p style={{ color: '#ff4d4f' }}>❌ {failureCount} failed</p>}
+                        </div>
+                    ),
+                    onOk: () => {
+                        this.setState({ testModalVisible: false })
+                        this.testFormRef?.current?.resetFields()
+                    },
+                })
+                
+                this.setState({ testMessageLoading: false })
+            })
+            .catch((error) => {
+                console.error('Failed to send test message:', error)
+                message.error('Failed to send test message. Server error.')
+                this.setState({ testMessageLoading: false })
+            })
+    }
+
+    showTestModal = () => {
+        if (this.state.messagingServices.length === 0) {
+            message.warning('Please add at least one messaging service before sending a test message.')
+            return
+        }
+        this.setState({ testModalVisible: true })
+    }
+
     render() {
         const columns = [
             {
@@ -193,12 +265,22 @@ class MessagingServices extends React.Component {
         return (
             <Card 
                 title={
-                    <Space>
-                        <span>Messaging Services</span>
-                        <Tooltip title="Configure webhook URLs for different messaging platforms">
-                            <InfoCircleOutlined style={{ color: '#1890ff' }} />
-                        </Tooltip>
-                    </Space>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Space>
+                            <span>Messaging Services</span>
+                            <Tooltip title="Configure webhook URLs for different messaging platforms">
+                                <InfoCircleOutlined style={{ color: '#1890ff' }} />
+                            </Tooltip>
+                        </Space>
+                        <Button 
+                            type="primary"
+                            icon={<SendOutlined />}
+                            onClick={this.showTestModal}
+                            disabled={this.state.messagingServices.length === 0}
+                        >
+                            Send Test Message
+                        </Button>
+                    </div>
                 }
             >
                 <Table
@@ -253,6 +335,48 @@ class MessagingServices extends React.Component {
                         </Form.Item>
                     </Form>
                 </Card>
+
+                <Modal
+                    title="Send Test Message"
+                    open={this.state.testModalVisible}
+                    onCancel={() => this.setState({ testModalVisible: false })}
+                    footer={null}
+                >
+                    <Form
+                        ref={this.testFormRef}
+                        layout="vertical"
+                        onFinish={this.sendTestMessage}
+                    >
+                        <Form.Item
+                            name="message"
+                            label="Custom Message (optional)"
+                            help="Leave empty to send default test message"
+                        >
+                            <Input.TextArea 
+                                placeholder="Enter a custom test message..."
+                                rows={3}
+                            />
+                        </Form.Item>
+                        
+                        <Form.Item>
+                            <Space>
+                                <Button 
+                                    type="primary" 
+                                    htmlType="submit"
+                                    icon={<SendOutlined />}
+                                    loading={this.state.testMessageLoading}
+                                >
+                                    Send Test
+                                </Button>
+                                <Button 
+                                    onClick={() => this.setState({ testModalVisible: false })}
+                                >
+                                    Cancel
+                                </Button>
+                            </Space>
+                        </Form.Item>
+                    </Form>
+                </Modal>
             </Card>
         )
     }
