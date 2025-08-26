@@ -30,7 +30,7 @@ data class ReleaseInformation(
     @SerializedName(value = "changelog", alternate = ["body"])
     var changelog: String? = null,
     @SerializedName(value = "latestVersion", alternate = ["tag_name"])
-    val latestVersion: String,
+    val latestVersion: String? = null,
     var currentVersion: String? = null,
     var upgrade: Boolean = false
 ) {

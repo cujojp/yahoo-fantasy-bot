@@ -80,6 +80,11 @@ fun Application.module(testing: Boolean = false) {
 }
 
 private fun getCurrentVersion(classLoader: ClassLoader) : String? {
-    return classLoader.getResource("VERSION")?.readText()
+    return try {
+        classLoader.getResource("VERSION")?.readText()?.trim()
+    } catch (e: Exception) {
+        println("Warning: Could not read VERSION file: ${e.message}")
+        null
+    }
 }
 

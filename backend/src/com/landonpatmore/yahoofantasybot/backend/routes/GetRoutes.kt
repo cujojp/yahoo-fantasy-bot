@@ -82,20 +82,37 @@ private fun Route.getMessageType(db: Db) {
 
 private fun Route.getReleaseInformation(currentVersion: String?) {
     get("/releaseInformation") {
-        val release = HttpClient(OkHttp) {
-            install(ContentNegotiation) {
-                gson()
+        try {
+            val release = HttpClient(OkHttp) {
+                install(ContentNegotiation) {
+                    gson()
+                }
+            }.use { client ->
+                client.get(ReleaseInformation.URL).body<ReleaseInformation>()
+            }.apply {
+                this.currentVersion = currentVersion ?: "0.0.0"
+                // Check if latestVersion is null before using it
+                if (latestVersion != null) {
+                    upgrade = versionChecker(this.currentVersion, latestVersion)
+                    if (!upgrade) {
+                        changelog = null
+                    }
+                } else {
+                    upgrade = false
+                    changelog = null
+                }
             }
-        }.use { client ->
-            client.get(ReleaseInformation.URL).body<ReleaseInformation>()
-        }.apply {
-            this.currentVersion = currentVersion ?: "0.0.0"
-            upgrade = versionChecker(this.currentVersion, latestVersion)
-            if (!upgrade) {
-                changelog = null
-            }
+            call.respond(release)
+        } catch (e: Exception) {
+            println("Error fetching release information: ${e.message}")
+            // Return a default response on error
+            call.respond(ReleaseInformation(
+                changelog = null,
+                latestVersion = currentVersion ?: "0.0.0",
+                currentVersion = currentVersion ?: "0.0.0",
+                upgrade = false
+            ))
         }
-        call.respond(release)
     }
 }
 
@@ -133,10 +150,10 @@ fun Route.auth(db: Db) {
 
 private fun versionChecker(
     currentVersion: String?,
-    tagName: String
+    tagName: String?
 ): Boolean {
-    if (currentVersion == null) {
-        return false // since we cannot determine our current version for some reason
+    if (currentVersion == null || tagName == null) {
+        return false // since we cannot determine versions
     }
     
     val currentVersionSplit = currentVersion.split(".")
