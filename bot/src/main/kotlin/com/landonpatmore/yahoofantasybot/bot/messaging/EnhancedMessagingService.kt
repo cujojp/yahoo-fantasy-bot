@@ -163,7 +163,7 @@ class EnhancedMessagingService(
      * Simple extraction of player names from message content
      */
     private fun extractPlayersFromContent(content: String): List<String>? {
-        val playerPattern = Regex("""([A-Z][a-z]+ [A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s*\([A-Z]{2,4},\s*[A-Z]+\)""")
+        val playerPattern = Regex("""([A-Z][a-z']+ [A-Z][a-z']+(?:\s[A-Z][a-z']+)*)\s*\([A-Z]{2,4},\s*[A-Z]+\)""")
         val matches = playerPattern.findAll(content)
         
         val players = matches.map { it.groupValues[1].trim() }.toList()

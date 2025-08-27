@@ -56,7 +56,9 @@ object OpenAIHelper {
                 """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about this fantasy football transaction.
                     |Keep it under 280 characters. Use insider language and create urgency/excitement.
                     |Use only ONE emoji maximum, preferably 🚨 for breaking news or 🏈 for football context, or none at all. Make it sound like breaking news.
-                    |Focus on the fantasy impact and player value. This is a test of the transaction alert system.""".trimMargin()
+                    |Focus on the fantasy impact and player value. This is a test of the transaction alert system.
+                    |CRITICAL: Do NOT make up any specific performance data, statistics, or game results unless explicitly provided in the context.
+                    |If no recent news or context is provided about a player, focus on the transaction itself without inventing reasons or performance data.""".trimMargin()
             } else {
                 """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about a fantasy football bot test message.
                     |Keep it under 280 characters. Use insider language and create urgency/excitement.
@@ -149,8 +151,8 @@ object OpenAIHelper {
         val players = mutableListOf<PlayerInfo>()
         
         // Simple regex patterns to extract names from common formats
-        // "Player Name (TEAM, POS)" format
-        val playerPattern = Regex("""([A-Z][a-z]+ [A-Z][a-z]+(?:\s[A-Z][a-z]+)*)\s*\(([A-Z]{2,4}),\s*([A-Z]+)\)""")
+        // "Player Name (TEAM, POS)" format - updated to handle apostrophes
+        val playerPattern = Regex("""([A-Z][a-z']+ [A-Z][a-z']+(?:\s[A-Z][a-z']+)*)\s*\(([A-Z]{2,4}),\s*([A-Z]+)\)""")
         val matches = playerPattern.findAll(message)
         
         matches.forEach { match ->
@@ -171,7 +173,7 @@ object OpenAIHelper {
         
         // Fallback: look for capitalized names (less reliable)
         if (players.isEmpty()) {
-            val namePattern = Regex("""([A-Z][a-z]+\s+[A-Z][a-z]+)""")
+            val namePattern = Regex("""([A-Z][a-z']+\s+[A-Z][a-z']+)""")
             val nameMatches = namePattern.findAll(message)
             nameMatches.take(3).forEach { match ->
                 val name = match.groupValues[1]
