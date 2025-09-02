@@ -66,25 +66,37 @@ class Arbiter(
 
         Observable.interval(0, 15, TimeUnit.SECONDS)
             .subscribe {
+                println("[Arbiter] Running transaction check cycle...")
                 configurationBridge.consumer.accept(Configuration.Alerts(database.getAlerts()))
                 try {
+                    println("[Arbiter] Fetching transactions from Yahoo API...")
                     val event = dataRetriever.yahooApiRequest(YahooApiRequest.Transactions)
+                    println("[Arbiter] Received response from Yahoo API")
+                    
                     val latestTimeChecked = database.getLatestTimeChecked()
+                    println("[Arbiter] Latest time checked: ${latestTimeChecked.time}")
+                    
                     if (latestTimeChecked.time != -1L) {
-                        transactionsBridge.consumer.accept(
-                            Pair(
-                                if (latestTimeChecked.time == -1L) {
-                                    // we say -15 so that we can grab anything right before we got this bad value
-                                    System.currentTimeMillis() - 15
-                                } else {
-                                    latestTimeChecked.time
-                                } / 1000, event
-                            )
-                        )
+                        val checkTime = if (latestTimeChecked.time == -1L) {
+                            // we say -15 so that we can grab anything right before we got this bad value
+                            System.currentTimeMillis() - 15
+                        } else {
+                            latestTimeChecked.time
+                        } / 1000
+                        
+                        println("[Arbiter] Checking for transactions since: $checkTime")
+                        
+                        // Count transactions for debugging
+                        val transactionCount = event.select("transaction").size
+                        println("[Arbiter] Total transactions in response: $transactionCount")
+                        
+                        transactionsBridge.consumer.accept(Pair(checkTime, event))
                     }
                     database.saveLatestTimeChecked(System.currentTimeMillis())
+                    println("[Arbiter] Transaction check cycle completed successfully")
                 } catch (e: Exception) {
-                    println(e.message)
+                    println("[Arbiter] ERROR during transaction check: ${e.message}")
+                    e.printStackTrace()
                 }
             }
     }
