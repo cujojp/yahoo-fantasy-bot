@@ -31,8 +31,6 @@ import io.ktor.http.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.encodeToString
 
 import java.time.Instant
 import java.time.ZoneId
@@ -103,7 +101,7 @@ fun Route.healthRoutes(database: Db) {
             lastActivity = checkLastActivity(database)
         )
         
-        call.respond(HttpStatusCode.OK, Json.encodeToString(response))
+        call.respond(HttpStatusCode.OK, response)
     }
     
     // Simple ping endpoint for uptime monitoring
