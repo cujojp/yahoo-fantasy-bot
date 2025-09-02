@@ -97,7 +97,7 @@ class DataRetriever(private val database: Db) : IDataRetriever {
         val document = Jsoup.parse(response.body, "", Parser.xmlParser())
         
         // Log some basic info about the response
-        val rootElement = document.root()?.tagName() ?: "unknown"
+        val rootElement = document.root?.tagName() ?: "unknown"
         println("[DataRetriever] Parsed XML root element: $rootElement")
         
         return document
