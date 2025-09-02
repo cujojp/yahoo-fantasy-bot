@@ -191,6 +191,14 @@ private fun authenticationUrl(url: String): String? {
         .defaultScope("fspt-r")
         .build(YahooApi20.instance())
 
-    return service?.authorizationUrl
+    // Manually append scope to authorization URL if not included
+    val authUrl = service?.authorizationUrl
+    val finalUrl = if (authUrl != null && !authUrl.contains("scope=")) {
+        "$authUrl&scope=fspt-r"
+    } else {
+        authUrl
+    }
+    println("[OAuth] Authorization URL: $finalUrl")
+    return finalUrl
 }
 
