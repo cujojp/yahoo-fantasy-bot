@@ -34,41 +34,21 @@ import org.jsoup.nodes.Element
 
 fun Observable<Pair<Long, Document>>.convertToTransactionMessage(openAIService: OpenAIService? = null): Observable<Message> =
     flatMap {
-        println("[TransactionTransformer] Processing transactions document")
-        val transactions = it.second.select("transaction")
-        println("[TransactionTransformer] Found ${transactions.size} transactions in document")
-        
-        Observable.fromIterable(transactions)
+        Observable.fromIterable(it.second.select("transaction"))
             .map { transaction ->
                 Pair(it.first, transaction)
             }
-    }.filter { pair ->
-        val timestamp = pair.second.select("timestamp").text().toLongOrNull() ?: 0L
-        val checkTime = pair.first
-        val isNew = timestamp >= checkTime
-        
-        println("[TransactionTransformer] Transaction timestamp: $timestamp, check time: $checkTime, is new: $isNew")
-        
-        if (isNew) {
-            val type = pair.second.select("type").firstOrNull()?.text() ?: "unknown"
-            println("[TransactionTransformer] New transaction found - Type: $type")
-        }
-        
-        isNew
+    }.filter {
+        it.second.select("timestamp").text().toLong() >= it.first
     }.flatMap { pair ->
         val transactionType = pair.second.select("type").first().text()
-        println("[TransactionTransformer] Processing $transactionType transaction")
-        
         val baseMessage = when (transactionType) {
             "add" -> addMessage(pair.second, openAIService)
             "drop" -> dropMessage(pair.second, openAIService)
             "add/drop" -> addDropMessage(pair.second, openAIService)
             "trade" -> tradeMessage(pair.second, openAIService)
             "commish" -> commissionerMessage(openAIService)
-            else -> {
-                println("[TransactionTransformer] Unknown transaction type: $transactionType")
-                Observable.just(Message.Unknown(""))
-            }
+            else -> Observable.just(Message.Unknown(""))
         }
         baseMessage
     }

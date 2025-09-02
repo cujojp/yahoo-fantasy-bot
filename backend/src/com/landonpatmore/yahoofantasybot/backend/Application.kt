@@ -28,7 +28,6 @@ import com.landonpatmore.yahoofantasybot.backend.routes.getRoutes
 import com.landonpatmore.yahoofantasybot.backend.routes.putRoutes
 import com.landonpatmore.yahoofantasybot.backend.routes.serveFrontend
 import com.landonpatmore.yahoofantasybot.backend.routes.messageHistoryRouting
-import com.landonpatmore.yahoofantasybot.backend.routes.healthRoutes
 import com.landonpatmore.yahoofantasybot.backend.middleware.configureSession
 import com.landonpatmore.yahoofantasybot.backend.middleware.configureAuthenticationRoutes
 import io.ktor.server.application.*
@@ -113,7 +112,6 @@ fun Application.module(testing: Boolean = false) {
     routing {
         configureAuthenticationRoutes(db)
         messageHistoryRouting()
-        healthRoutes(db)
     }
     
     serveFrontend()
