@@ -33,8 +33,7 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.Transaction
+
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -125,14 +124,12 @@ private fun checkEnvironment(): EnvironmentStatus {
 
 private fun checkDatabase(database: Db): DatabaseStatus {
     return try {
-        transaction {
-            // Simple connectivity check - if we can start a transaction, we're connected
-            connection.isClosed
-        }
+        // Try to get token data as a simple connectivity check
+        database.getLatestTokenData()
         
         DatabaseStatus(
             connected = true,
-            tablesExist = true // Assume tables exist if we can connect
+            tablesExist = true // Assume tables exist if we can query
         )
     } catch (e: Exception) {
         DatabaseStatus(
