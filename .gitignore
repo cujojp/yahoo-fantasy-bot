@@ -69,4 +69,3 @@ backend/resources/frontend
 # SSL Certificates (local development)
 certificates/
 .env
-.env
