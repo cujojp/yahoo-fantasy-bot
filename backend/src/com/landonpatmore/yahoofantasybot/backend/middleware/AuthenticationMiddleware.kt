@@ -235,13 +235,4 @@ fun Route.configureAuthenticationRoutes(database: Db) {
         // database.clearTokens() // If this method exists
         call.respondRedirect("/?logged_out=true")
     }
-    
-    // Health check endpoint for Railway
-    get("/health") {
-        call.respond(HttpStatusCode.OK, mapOf(
-            "status" to "healthy",
-            "timestamp" to System.currentTimeMillis(),
-            "version" to (System.getenv("VERSION") ?: "unknown")
-        ))
-    }
 }
