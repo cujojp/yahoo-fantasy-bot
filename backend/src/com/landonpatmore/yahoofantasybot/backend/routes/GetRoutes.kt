@@ -118,7 +118,18 @@ private fun Route.getReleaseInformation(currentVersion: String?) {
 
 fun Route.authenticate(db: Db) {
     get("/authenticate") {
-        if (db.getLatestTokenData() == null) {
+        val forceReauth = call.request.queryParameters["force"] == "true"
+        val tokenData = db.getLatestTokenData()
+        val needsAuth = if (forceReauth || tokenData == null) {
+            true
+        } else {
+            val (retrieved, token) = tokenData
+            val expiryTime = retrieved + (token.expiresIn * 1000L)
+            val isExpired = expiryTime <= System.currentTimeMillis()
+            isExpired // Need auth if token is expired
+        }
+        
+        if (needsAuth) {
             authenticationUrl("https://${call.request.headers["Host"] ?: "localhost:8080"}")?.let {
                 call.respondRedirect(it)
             }
