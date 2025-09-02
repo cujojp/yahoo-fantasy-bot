@@ -79,12 +79,28 @@ class DataRetriever(private val database: Db) : IDataRetriever {
 
     override fun grabData(url: String): Document {
         refreshExpiredToken()
-        println("Grabbing Data...")
+        println("[DataRetriever] Grabbing data from URL: $url")
         val request = OAuthRequest(Verb.GET, url)
         oauthService.signRequest(currentToken?.second, request)
+        
+        println("[DataRetriever] Executing API request...")
         val response = oauthService.execute(request)
-        println("Data grabbed.")
-        return Jsoup.parse(response.body, "", Parser.xmlParser())
+        
+        println("[DataRetriever] Response code: ${response.code}")
+        println("[DataRetriever] Response body length: ${response.body?.length ?: 0} characters")
+        
+        if (response.code != 200) {
+            println("[DataRetriever] ERROR: Non-200 response code")
+            println("[DataRetriever] Response body: ${response.body}")
+        }
+        
+        val document = Jsoup.parse(response.body, "", Parser.xmlParser())
+        
+        // Log some basic info about the response
+        val rootElement = document.root()?.tagName() ?: "unknown"
+        println("[DataRetriever] Parsed XML root element: $rootElement")
+        
+        return document
     }
 
     override fun retrieveGameKey(): String? {
