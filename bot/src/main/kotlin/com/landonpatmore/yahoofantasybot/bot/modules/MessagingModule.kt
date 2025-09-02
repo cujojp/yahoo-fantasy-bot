@@ -40,12 +40,12 @@ val messagingModule = module {
     single { Discord(EnvVariable.Str.DiscordWebhookUrl.variable) }
     single { Slack(EnvVariable.Str.SlackWebhookUrl.variable) }
     single { GroupMe(EnvVariable.Str.GroupMeBotId.variable) }
-    single { 
+    single<OpenAIService?> { 
         val apiKey = EnvVariable.Str.OpenAIApiKey.variable
         if (apiKey.isNotEmpty()) {
-            val dataRetriever = get<DataRetriever>()
-            val yahooNewsService = dataRetriever.createYahooNewsService()
-            OpenAIService(apiKey, yahooNewsService)
+            // Don't create YahooNewsService here as token might not be ready
+            // Just create OpenAIService without it for now
+            OpenAIService(apiKey, null)
         } else {
             null
         }
