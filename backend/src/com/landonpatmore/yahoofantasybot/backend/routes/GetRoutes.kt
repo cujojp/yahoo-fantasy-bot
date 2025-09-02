@@ -188,6 +188,7 @@ private fun authenticationUrl(url: String): String? {
     service = ServiceBuilder(EnvVariable.Str.YahooClientId.variable)
         .apiSecret(EnvVariable.Str.YahooClientSecret.variable)
         .callback("$url/auth")
+        .withScope("fspt-r")
         .build(YahooApi20.instance())
 
     return service?.authorizationUrl
