@@ -26,10 +26,10 @@ package com.landonpatmore.yahoofantasybot.backend.routes
 
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
-import io.ktor.application.*
+import io.ktor.server.application.*
 import io.ktor.http.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.transactions.transaction
