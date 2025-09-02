@@ -44,7 +44,7 @@ class DataRetriever(private val database: Db) : IDataRetriever {
     private val oauthService = ServiceBuilder(EnvVariable.Str.YahooClientId.variable)
         .apiSecret(EnvVariable.Str.YahooClientSecret.variable)
         .callback(OAuthConstants.OOB)
-        .withScope("fspt-r")
+        .defaultScope("fspt-r")
         .build(YahooApi20.instance())
     private val gameKeyUrl = "/game/${EnvVariable.Str.YahooGameKey.variable}"
     private var leagueUrl: String? = null
