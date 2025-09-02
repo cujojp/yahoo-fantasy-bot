@@ -8,9 +8,10 @@ cmds = [
     'rm -rf backend/resources/frontend',
     'cp -r frontend/build backend/resources/frontend',
     './gradlew clean',
-    'export GRADLE_OPTS="-Xmx2048m -Dorg.gradle.daemon=false" && ./gradlew :backend:clean :backend:build :backend:shadowJar --no-daemon -x test',
+    'export GRADLE_OPTS="-Xmx2048m -Dorg.gradle.daemon=false" && ./gradlew :backend:clean :backend:build :backend:shadowJar :bot:clean :bot:build :bot:shadowJar --no-daemon -x test',
     'mkdir -p build/libs',
     'cp backend/build/libs/*.jar build/libs/ || true',
+    'cp bot/build/libs/*.jar build/libs/ || true',
     'ls -la build/libs/',
     'echo "Build completed at $(date)"'
 ]
