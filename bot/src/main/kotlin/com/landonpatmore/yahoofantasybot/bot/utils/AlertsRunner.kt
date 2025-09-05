@@ -87,7 +87,17 @@ class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
                 alert.endMonth
             ) && validateDay(day) // TODO: timezone validation once added
         ) {
-            return "0 ${alert.minute} ${alert.hour} ? ${alert.startMonth}-${alert.endMonth} $day *"
+            // Handle month ranges that wrap around the year (e.g., Aug-Mar)
+            val monthRange = if (alert.startMonth > alert.endMonth) {
+                // Wrap around: e.g., 8-3 becomes 8-12,1-3
+                "${alert.startMonth}-12,1-${alert.endMonth}"
+            } else {
+                "${alert.startMonth}-${alert.endMonth}"
+            }
+            
+            val cron = "0 ${alert.minute} ${alert.hour} ? $monthRange $day *"
+            println("[AlertsRunner] Generated cron expression: $cron")
+            return cron
         }
         return null
     }
@@ -97,7 +107,7 @@ class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
     }
 
     private fun validateHour(hour: Int): Boolean {
-        return hour in 0..59
+        return hour in 0..23
     }
 
     private fun validateMonth(month: Int): Boolean {
@@ -122,14 +132,19 @@ class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
     }
 
     private fun removeJobs(uuids: List<String>) {
-        val scheduler = StdSchedulerFactory.getDefaultScheduler()
+        println("[AlertsRunner] Removing existing jobs...")
+        var removedCount = 0
+        
         for (groupName: String in scheduler.jobGroupNames) {
             for (jobKey: JobKey in scheduler.getJobKeys(GroupMatcher.jobGroupEquals(groupName))) {
-                if(!uuids.contains(jobKey.name)) {
-                    scheduler.deleteJob(jobKey)
-                }
+                // Remove all existing jobs to avoid conflicts
+                scheduler.deleteJob(jobKey)
+                removedCount++
+                println("[AlertsRunner] Removed job: ${jobKey.name}")
             }
         }
+        
+        println("[AlertsRunner] Removed $removedCount existing jobs")
     }
 
     /**
