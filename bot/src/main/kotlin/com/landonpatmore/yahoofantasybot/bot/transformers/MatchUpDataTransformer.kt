@@ -36,23 +36,32 @@ fun Observable<Document>.convertToMatchUpObject(): Observable<Pair<Team, Team>> 
     flatMapIterable { doc ->
         println("[MatchUpDataTransformer] Processing document for matchups")
         
-        // Try direct matchup elements first (for scoreboard format)
-        var matchups = doc.select("matchup")
-        println("[MatchUpDataTransformer] Found ${matchups.size} direct matchup elements")
-        
-        // If no direct matchups, try the teams/matchups structure
-        if (matchups.isEmpty()) {
-            println("[MatchUpDataTransformer] No direct matchups found, trying teams/matchups structure")
-            // Get the first team's matchups (they all have the same matchups)
-            matchups = doc.select("teams > team").firstOrNull()?.select("matchups > matchup") ?: doc.select("matchup")
-            println("[MatchUpDataTransformer] Found ${matchups.size} matchups from teams structure")
+        // For teams/matchups endpoint, we need to get matchups from the team structure
+        // Each team has all matchups for the season, so we just need to get them from one team
+        val firstTeam = doc.select("league > teams > team").firstOrNull()
+        if (firstTeam == null) {
+            println("[MatchUpDataTransformer] No teams found in document")
+            return@flatMapIterable emptyList<Element>()
         }
+        
+        val matchups = firstTeam.select("matchups > matchup")
+        println("[MatchUpDataTransformer] Found ${matchups.size} matchups from first team")
+        
+        // Debug: Log first few matchups structure
+        matchups.take(3).forEach { matchup ->
+            val week = matchup.select("week").text()
+            val teamsCount = matchup.select("teams > team").size
+            println("[MatchUpDataTransformer] Sample matchup - week: $week, teams: $teamsCount")
+        }
+        
+        // Get current week from league data
+        val currentWeek = doc.select("league > current_week").text().toIntOrNull() ?: 1
+        println("[MatchUpDataTransformer] Current week from league data: $currentWeek")
         
         // Filter for current week matchups only
         val currentWeekMatchups = matchups.filter { matchup ->
             val week = matchup.select("week").text().toIntOrNull() ?: 0
-            println("[MatchUpDataTransformer] Matchup week: $week")
-            week == 1 // TODO: Make this dynamic based on current week
+            week == currentWeek
         }
         
         println("[MatchUpDataTransformer] Found ${currentWeekMatchups.size} current week matchups")
