@@ -44,7 +44,7 @@ class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
     private val scheduler = StdSchedulerFactory.getDefaultScheduler()
 
     fun start() {
-t        println("[AlertsRunner] Starting AlertsRunner...")
+tty t        println("[AlertsRunner] Starting AlertsRunner...")
         scheduler.start()
         println("[AlertsRunner] Quartz scheduler started")
         

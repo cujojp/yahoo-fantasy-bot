@@ -6,6 +6,7 @@ import MessagingServices from '../messagingservices/MessagingServices'
 import Leagues from '../leagues/Leagues'
 import MessageType from '../messagetype/MessageType'
 import MessageHistory from '../messagehistory/MessageHistory'
+import ManualAlerts from '../manualalerts/ManualAlerts'
 
 const { Title } = Typography
 
@@ -127,6 +128,9 @@ class MainArea extends React.Component {
                         </Col>
                         <Col xs={24}>
                             <MessageType />
+                        </Col>
+                        <Col xs={24}>
+                            <ManualAlerts />
                         </Col>
                         <Col xs={24}>
                             <MessageHistory />

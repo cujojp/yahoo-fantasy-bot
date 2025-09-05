@@ -133,4 +133,27 @@ class BackendOAuthManager(private val database: Db) {
         println("BackendOAuthManager: Token age: ${timeElapsed}s, expires in: ${expiresIn}s, expired: $isExpired")
         return isExpired
     }
+    
+    /**
+     * Gets the league key for API requests
+     */
+    fun getLeagueKey(): String {
+        val leagues = database.getLeagues()
+        if (leagues.isEmpty()) {
+            throw RuntimeException("No leagues configured")
+        }
+        val league = leagues.first()
+        return "${league.gameKey}.l.${league.leagueId}"
+    }
+    
+    /**
+     * Authenticates an HTTP request with OAuth token
+     */
+    fun authenticateRequest(request: com.mashape.unirest.request.HttpRequest): com.mashape.unirest.request.HttpRequest {
+        val tokenData = getValidToken()
+            ?: throw RuntimeException("No valid OAuth token available")
+        
+        val (_, token) = tokenData
+        return request.header("Authorization", "Bearer ${token.accessToken}")
+    }
 }

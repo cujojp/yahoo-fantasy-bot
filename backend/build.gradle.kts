@@ -59,6 +59,7 @@ dependencies {
     implementation("ch.qos.logback:logback-classic:1.2.1")
     implementation("com.mashape.unirest:unirest-java:1.4.9")
     implementation("org.json:json:20210307")
+    implementation("org.jsoup:jsoup:1.15.3")
 }
 
 sourceSets {
