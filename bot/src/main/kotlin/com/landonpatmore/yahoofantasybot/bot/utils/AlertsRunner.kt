@@ -42,6 +42,7 @@ import java.util.*
 class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
 
     private val scheduler = StdSchedulerFactory.getDefaultScheduler()
+    private var lastAlertConfiguration: List<Alert> = emptyList()
 
     fun start() {
         println("[AlertsRunner] Starting AlertsRunner...")
@@ -52,11 +53,36 @@ class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
             .ofType(Configuration.Alerts::class.java)
             .map {
                 it.alerts
-            }.subscribe {
-                println("[AlertsRunner] Received configuration update with ${it.size} alerts")
-                generateJobs(it)
+            }.subscribe { alerts ->
+                println("[AlertsRunner] Received configuration update with ${alerts.size} alerts")
+                
+                // Only regenerate jobs if configuration actually changed
+                if (!areAlertsEqual(lastAlertConfiguration, alerts)) {
+                    println("[AlertsRunner] Configuration changed, regenerating jobs")
+                    generateJobs(alerts)
+                    lastAlertConfiguration = alerts.toList()
+                } else {
+                    println("[AlertsRunner] Configuration unchanged, keeping existing jobs")
+                }
             }
         println("[AlertsRunner] AlertsRunner started and listening for configuration updates")
+    }
+    
+    private fun areAlertsEqual(list1: List<Alert>, list2: List<Alert>): Boolean {
+        if (list1.size != list2.size) return false
+        
+        val sorted1 = list1.sortedBy { it.uuid }
+        val sorted2 = list2.sortedBy { it.uuid }
+        
+        return sorted1.zip(sorted2).all { (a1, a2) ->
+            a1.type == a2.type &&
+            a1.hour == a2.hour &&
+            a1.minute == a2.minute &&
+            a1.startMonth == a2.startMonth &&
+            a1.endMonth == a2.endMonth &&
+            a1.dayOfWeek == a2.dayOfWeek &&
+            a1.uuid == a2.uuid
+        }
     }
 
     private fun generateJobs(alerts: List<Alert>) {

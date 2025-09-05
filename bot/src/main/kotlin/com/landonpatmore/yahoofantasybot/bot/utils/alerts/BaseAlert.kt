@@ -36,7 +36,9 @@ abstract class BaseAlert : Job, KoinComponent {
     protected val dataRetriever: IDataRetriever by inject()
 
     override fun execute(context: JobExecutionContext?) {
-        println("[BaseAlert] $name update job running at ${java.time.LocalDateTime.now()}")
-        println("[BaseAlert] Job context: ${context?.jobDetail?.key}")
+        println("[BaseAlert] $name update job FIRING at ${java.time.LocalDateTime.now()}")
+        println("[BaseAlert] Job key: ${context?.jobDetail?.key}")
+        println("[BaseAlert] Scheduled fire time: ${context?.scheduledFireTime}")
+        println("[BaseAlert] Actual fire time: ${context?.fireTime}")
     }
 }

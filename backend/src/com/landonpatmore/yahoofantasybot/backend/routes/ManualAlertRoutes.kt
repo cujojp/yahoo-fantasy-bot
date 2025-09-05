@@ -281,22 +281,28 @@ private fun parseStandingsData(standingsData: String): List<StandingTeam> {
 
 private fun formatMatchupMessage(matchup: Pair<Team, Team>): String {
     val (teamOne, teamTwo) = matchup
-    return """**${teamOne.name}** vs. **${teamTwo.name}**
-**${teamOne.projectedPoints}** (${(teamOne.winProbability).toInt()}%) - **${teamTwo.projectedPoints}** (${(teamTwo.winProbability).toInt()}%)"""
+    val teamDataBuilder = StringBuilder()
+    teamDataBuilder.append("**${teamOne.name}** vs. **${teamTwo.name}**\\n")
+    teamDataBuilder.append(
+        "**${teamOne.projectedPoints}** (${teamOne.winProbability.toInt()}%) " +
+                "- **${teamTwo.projectedPoints}** (${teamTwo.winProbability.toInt()}%)"
+    )
+    return teamDataBuilder.toString()
 }
 
 private fun formatScoreMessage(score: Pair<Team, Team>, isCloseScore: Boolean): String {
     val (teamOne, teamTwo) = score
-    return """**${teamOne.name}** vs. **${teamTwo.name}**
-**${teamOne.points}** (${teamOne.projectedPoints}) - **${teamTwo.points}** (${teamTwo.projectedPoints})"""
+    return "**${teamOne.name}** vs. **${teamTwo.name}**\\n" +
+            "**${teamOne.points}** (${teamOne.projectedPoints}) - **${teamTwo.points}** (${teamTwo.projectedPoints})"
 }
 
 private fun formatStandingsMessage(standings: List<StandingTeam>): String {
-    val header = "**League Standings**\n"
-    val rows = standings.joinToString("\n") { team ->
-        "${team.rank}. **${team.name}** (${team.record}) - PF: ${team.pointsFor} PA: ${team.pointsAgainst}"
+    val messages = standings.map { team ->
+        "${team.rank}. **${team.name}**\\n" +
+        "Record: **${team.record}**\\n" +
+        "PF: **${team.pointsFor}** | PA: **${team.pointsAgainst}**"
     }
-    return header + rows
+    return messages.joinToString("\\n\\n")
 }
 
 private fun sendToMessagingServices(db: Db, message: String, alertType: String): Map<String, String> {
