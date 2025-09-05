@@ -67,7 +67,13 @@ class Arbiter(
         Observable.interval(0, 15, TimeUnit.SECONDS)
             .subscribe {
                 println("[Arbiter] Running transaction check cycle...")
-                configurationBridge.consumer.accept(Configuration.Alerts(database.getAlerts()))
+                val alerts = database.getAlerts()
+                println("[Arbiter] Loaded ${alerts.size} alerts from database:")
+                alerts.forEachIndexed { index, alert ->
+                    println("[Arbiter] Alert $index: type=${alert.type}, hour=${alert.hour}, minute=${alert.minute}, " +
+                            "startMonth=${alert.startMonth}, endMonth=${alert.endMonth}, dayOfWeek=${alert.dayOfWeek}, uuid=${alert.uuid}")
+                }
+                configurationBridge.consumer.accept(Configuration.Alerts(alerts))
                 try {
                     println("[Arbiter] Fetching transactions from Yahoo API...")
                     val event = dataRetriever.yahooApiRequest(YahooApiRequest.Transactions)

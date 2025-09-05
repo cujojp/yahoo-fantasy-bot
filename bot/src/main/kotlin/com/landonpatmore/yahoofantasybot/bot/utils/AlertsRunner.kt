@@ -44,30 +44,38 @@ class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
     private val scheduler = StdSchedulerFactory.getDefaultScheduler()
 
     fun start() {
+t        println("[AlertsRunner] Starting AlertsRunner...")
         scheduler.start()
+        println("[AlertsRunner] Quartz scheduler started")
+        
         configurationBridge.eventStream
             .ofType(Configuration.Alerts::class.java)
             .map {
                 it.alerts
             }.subscribe {
+                println("[AlertsRunner] Received configuration update with ${it.size} alerts")
                 generateJobs(it)
             }
+        println("[AlertsRunner] AlertsRunner started and listening for configuration updates")
     }
 
     private fun generateJobs(alerts: List<Alert>) {
+        println("[AlertsRunner] Generating jobs for ${alerts.size} alerts")
         removeJobs(alerts.map { it.uuid })
-        alerts.forEach {
-            generateCron(it)?.let { cron ->
-                createJob(
-                    when (it.type) {
-                        Alert.SCORE -> ScoreAlert::class.java
-                        Alert.CLOSE_SCORE -> CloseScoreAlert::class.java
-                        Alert.STANDINGS -> StandingsAlert::class.java
-                        Alert.MATCHUP -> MatchUpAlert::class.java
-                        else -> null
-                    }, it.uuid, cron
-                )
-            } ?: println("Invalid cron, not creating alert")
+        alerts.forEach { alert ->
+            println("[AlertsRunner] Processing alert: type=${alert.type}, uuid=${alert.uuid}")
+            generateCron(alert)?.let { cron ->
+                println("[AlertsRunner] Generated cron for alert ${alert.uuid}: $cron")
+                val jobClass = when (alert.type) {
+                    Alert.SCORE -> ScoreAlert::class.java
+                    Alert.CLOSE_SCORE -> CloseScoreAlert::class.java
+                    Alert.STANDINGS -> StandingsAlert::class.java
+                    Alert.MATCHUP -> MatchUpAlert::class.java
+                    else -> null
+                }
+                println("[AlertsRunner] Job class for alert ${alert.uuid}: ${jobClass?.simpleName ?: "null"}")
+                createJob(jobClass, alert.uuid, cron)
+            } ?: println("[AlertsRunner] Invalid cron for alert ${alert.uuid}, not creating alert")
         }
     }
 
@@ -131,9 +139,12 @@ class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
      */
     private fun createJob(jobClass: Class<out org.quartz.Job>?, jobKey: String, cron: String) {
         if (jobClass == null) {
+            println("[AlertsRunner] Job class is null for key $jobKey, skipping job creation")
             return
         }
 
+        println("[AlertsRunner] Creating job for ${jobClass.simpleName} with key $jobKey and cron $cron")
+        
         val jobDetail = newJob(jobClass)
             .withIdentity(jobKey)
             .build()
@@ -145,6 +156,7 @@ class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
                     .inTimeZone(TimeZone.getTimeZone("UTC"))
             ).build()
 
+        println("[AlertsRunner] Job detail created: ${jobDetail.key}, Trigger created with next fire time: ${trigger.nextFireTime}")
         scheduleJob(Job(jobDetail, trigger))
     }
 
@@ -153,10 +165,13 @@ class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
      */
     private fun scheduleJob(job: Job) {
         try {
-            scheduler.scheduleJob(job.jobDetail, job.trigger)
+            println("[AlertsRunner] Attempting to schedule job ${job.jobDetail.key}")
+            val date = scheduler.scheduleJob(job.jobDetail, job.trigger)
+            println("[AlertsRunner] Successfully scheduled job ${job.jobDetail.key}, first fire time: $date")
         } catch (e: SchedulerException) {
+            println("[AlertsRunner] Failed to schedule job ${job.jobDetail.key}: ${e.message}")
+            e.printStackTrace()
         }
-
     }
 
     private class Job(val jobDetail: JobDetail, val trigger: Trigger)
