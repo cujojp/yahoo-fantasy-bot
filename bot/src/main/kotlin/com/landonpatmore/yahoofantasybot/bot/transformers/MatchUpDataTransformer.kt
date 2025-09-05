@@ -74,12 +74,27 @@ fun Observable<Document>.convertToMatchUpObject(): Observable<Pair<Team, Team>> 
         try {
             val teams = matchup.select("teams > team")
             println("[MatchUpDataTransformer] Mapping matchup - found ${teams.size} teams")
-            val teamOne = generateTeamData(teams[0])
-            val teamTwo = generateTeamData(teams[1])
+            
+            if (teams.size < 2) {
+                println("[MatchUpDataTransformer] ERROR: Not enough teams! Expected 2, got ${teams.size}")
+                throw IllegalStateException("Not enough teams in matchup")
+            }
+            
+            println("[MatchUpDataTransformer] About to access teams[0]...")
+            val teamOneElement = teams[0]
+            println("[MatchUpDataTransformer] Successfully accessed teams[0], calling generateTeamData...")
+            val teamOne = generateTeamData(teamOneElement)
+            
+            println("[MatchUpDataTransformer] About to access teams[1]...")
+            val teamTwoElement = teams[1]
+            println("[MatchUpDataTransformer] Successfully accessed teams[1], calling generateTeamData...")
+            val teamTwo = generateTeamData(teamTwoElement)
+            
             println("[MatchUpDataTransformer] Successfully created pair: ${teamOne.name} vs ${teamTwo.name}")
             Pair(teamOne, teamTwo)
         } catch (e: Exception) {
             println("[MatchUpDataTransformer] Error mapping matchup: ${e.message}")
+            println("[MatchUpDataTransformer] Exception type: ${e.javaClass.name}")
             e.printStackTrace()
             throw e
         }
