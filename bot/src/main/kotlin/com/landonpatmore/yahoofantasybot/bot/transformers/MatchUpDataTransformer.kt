@@ -33,13 +33,28 @@ import org.jsoup.nodes.Element
 import kotlin.math.abs
 
 fun Observable<Document>.convertToMatchUpObject(): Observable<Pair<Team, Team>> =
-    flatMapIterable {
-        it.select("matchup")
-    }.map {
-        val teams = it.select("team")
+    flatMapIterable { doc ->
+        println("[MatchUpDataTransformer] Processing document for matchups")
+        val matchups = doc.select("matchup")
+        println("[MatchUpDataTransformer] Found ${matchups.size} matchup elements")
+        
+        // If no matchup elements, try scoreboard structure
+        if (matchups.isEmpty()) {
+            println("[MatchUpDataTransformer] No matchup elements found, trying scoreboard structure")
+            val scoreboardMatchups = doc.select("matchups > matchup")
+            println("[MatchUpDataTransformer] Found ${scoreboardMatchups.size} scoreboard matchup elements")
+            scoreboardMatchups
+        } else {
+            matchups
+        }
+    }.filter { matchup ->
+        val teams = matchup.select("team")
+        println("[MatchUpDataTransformer] Processing matchup with ${teams.size} teams")
+        teams.size >= 2
+    }.map { matchup ->
+        val teams = matchup.select("team")
         val teamOne = generateTeamData(teams[0])
         val teamTwo = generateTeamData(teams[1])
-
         Pair(teamOne, teamTwo)
     }
 

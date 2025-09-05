@@ -38,7 +38,16 @@ class MatchUpAlert : BaseAlert() {
     override fun execute(context: JobExecutionContext?) {
         super.execute(context)
 
-        val data = dataRetriever.yahooApiRequest(YahooApiRequest.TeamsData)
-        matchUpBridge.consumer.accept(data)
+        try {
+            println("[MatchUpAlert] Fetching teams data...")
+            val data = dataRetriever.yahooApiRequest(YahooApiRequest.TeamsData)
+            println("[MatchUpAlert] Data fetched, sending to bridge...")
+            println("[MatchUpAlert] Root element: ${data.select("fantasy_content").first()}")
+            matchUpBridge.consumer.accept(data)
+            println("[MatchUpAlert] Data sent to matchUpBridge")
+        } catch (e: Exception) {
+            println("[MatchUpAlert] Error executing matchup alert: ${e.message}")
+            e.printStackTrace()
+        }
     }
 }
