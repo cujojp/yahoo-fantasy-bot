@@ -71,10 +71,18 @@ fun Observable<Document>.convertToMatchUpObject(): Observable<Pair<Team, Team>> 
         println("[MatchUpDataTransformer] Processing matchup with ${teams.size} teams")
         teams.size >= 2
     }.map { matchup ->
-        val teams = matchup.select("teams > team")
-        val teamOne = generateTeamData(teams[0])
-        val teamTwo = generateTeamData(teams[1])
-        Pair(teamOne, teamTwo)
+        try {
+            val teams = matchup.select("teams > team")
+            println("[MatchUpDataTransformer] Mapping matchup - found ${teams.size} teams")
+            val teamOne = generateTeamData(teams[0])
+            val teamTwo = generateTeamData(teams[1])
+            println("[MatchUpDataTransformer] Successfully created pair: ${teamOne.name} vs ${teamTwo.name}")
+            Pair(teamOne, teamTwo)
+        } catch (e: Exception) {
+            println("[MatchUpDataTransformer] Error mapping matchup: ${e.message}")
+            e.printStackTrace()
+            throw e
+        }
     }
 
 fun Observable<Pair<Team, Team>>.convertToMatchUpMessage(): Observable<Message> =
@@ -113,29 +121,41 @@ fun Observable<Pair<Team, Team>>.convertToScoreUpdateMessage(closeScoreUpdate: B
     }
 
 private fun generateTeamData(team: Element): Team {
-    val id = team.select("team_id").text().toInt()
-    val name = team.select("name").text()
-    val waiverPriority = team.select("waiver_priority").text().toIntOrNull()
-    val faabBalance = team.select("faab_balance").text().toIntOrNull()
-    val numberOfMoves = team.select("number_of_moves").text().toInt()
-    val numberOfTrades = team.select("number_of_trades").text().toInt()
-    val winProbability = team.select("win_probability").text().toDouble() * 100
-    val points = team.select("team_points").select("total").text().toDouble()
-    val projectedPoints = team.select("team_projected_points").select("total").text().toDouble()
-    
-    println("[MatchUpDataTransformer] Team data - name: $name, winProb: $winProbability, projPoints: $projectedPoints")
-
-    return Team(
-        name,
-        id,
-        waiverPriority,
-        faabBalance,
-        numberOfMoves,
-        numberOfTrades,
-        winProbability,
-        points,
-        projectedPoints
-    )
+    try {
+        println("[MatchUpDataTransformer] Generating team data from element: ${team.tagName()}")
+        
+        val id = team.select("team_id").text().toIntOrNull() ?: 0
+        val name = team.select("name").text()
+        val waiverPriority = team.select("waiver_priority").text().toIntOrNull()
+        val faabBalance = team.select("faab_balance").text().toIntOrNull()
+        val numberOfMoves = team.select("number_of_moves").text().toIntOrNull() ?: 0
+        val numberOfTrades = team.select("number_of_trades").text().toIntOrNull() ?: 0
+        val winProbability = team.select("win_probability").text().toDoubleOrNull()?.times(100) ?: 0.0
+        val points = team.select("team_points").select("total").text().toDoubleOrNull() ?: 0.0
+        val projectedPoints = team.select("team_projected_points").select("total").text().toDoubleOrNull() ?: 0.0
+        
+        println("[MatchUpDataTransformer] Team data - name: $name, id: $id, winProb: $winProbability, projPoints: $projectedPoints")
+        
+        if (name.isEmpty()) {
+            println("[MatchUpDataTransformer] WARNING: Team name is empty")
+        }
+        
+        return Team(
+            name,
+            id,
+            waiverPriority,
+            faabBalance,
+            numberOfMoves,
+            numberOfTrades,
+            winProbability,
+            points,
+            projectedPoints
+        )
+    } catch (e: Exception) {
+        println("[MatchUpDataTransformer] Error generating team data: ${e.message}")
+        e.printStackTrace()
+        throw e
+    }
 }
 
 data class Team(
