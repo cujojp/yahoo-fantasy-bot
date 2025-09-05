@@ -38,15 +38,7 @@ fun Observable<Document>.convertToMatchUpObject(): Observable<Pair<Team, Team>> 
         val matchups = doc.select("matchup")
         println("[MatchUpDataTransformer] Found ${matchups.size} matchup elements")
         
-        // If no matchup elements, try scoreboard structure
-        if (matchups.isEmpty()) {
-            println("[MatchUpDataTransformer] No matchup elements found, trying scoreboard structure")
-            val scoreboardMatchups = doc.select("matchups > matchup")
-            println("[MatchUpDataTransformer] Found ${scoreboardMatchups.size} scoreboard matchup elements")
-            scoreboardMatchups
-        } else {
-            matchups
-        }
+        matchups
     }.filter { matchup ->
         val teams = matchup.select("team")
         println("[MatchUpDataTransformer] Processing matchup with ${teams.size} teams")
@@ -60,6 +52,7 @@ fun Observable<Document>.convertToMatchUpObject(): Observable<Pair<Team, Team>> 
 
 fun Observable<Pair<Team, Team>>.convertToMatchUpMessage(): Observable<Message> =
     map {
+        println("[MatchUpDataTransformer] Creating matchup message for ${it.first.name} vs ${it.second.name}")
         val teamDataBuilder = StringBuilder()
         teamDataBuilder.append("${it.first.name.bold()} vs. ${it.second.name.bold()}\\n")
         teamDataBuilder.append(
@@ -67,7 +60,9 @@ fun Observable<Pair<Team, Team>>.convertToMatchUpMessage(): Observable<Message> 
                     "- ${it.second.projectedPoints.bold()} (${it.second.winProbability.toPercentage()})"
         )
 
-        Message.MatchUp(teamDataBuilder.toString())
+        val message = Message.MatchUp(teamDataBuilder.toString())
+        println("[MatchUpDataTransformer] Created message: ${message.message}")
+        message
     }
 
 fun Observable<Pair<Team, Team>>.convertToScoreUpdateMessage(closeScoreUpdate: Boolean = false): Observable<Message> =

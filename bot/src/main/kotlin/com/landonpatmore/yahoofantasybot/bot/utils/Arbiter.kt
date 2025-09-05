@@ -147,10 +147,22 @@ class Arbiter(
 
     private fun setupMatchUpBridge() {
         val transactions = matchUpBridge.eventStream
+            .doOnNext { println("[Arbiter] MatchUpBridge received document") }
             .convertToMatchUpObject()
+            .doOnNext { println("[Arbiter] Converted to matchup object: ${it.first.name} vs ${it.second.name}") }
             .convertToMatchUpMessage()
+            .doOnNext { println("[Arbiter] Converted to message: ${it.message}") }
 
-        transactions.subscribe(messageBridge.consumer)
+        transactions.subscribe(
+            { message -> 
+                println("[Arbiter] Sending matchup message to messageBridge")
+                messageBridge.consumer.accept(message)
+            },
+            { error ->
+                println("[Arbiter] Error in matchup bridge: ${error.message}")
+                error.printStackTrace()
+            }
+        )
     }
 
     private fun setupStandingsBridge() {

@@ -139,7 +139,7 @@ class DataRetriever(private val database: Db) : IDataRetriever {
     }
 
     override fun getTeamsData(): Document {
-        return grabData(BASE_URL + leagueUrl + SCOREBOARD)
+        return grabData(BASE_URL + leagueUrl + TEAMS_MATCHUPS)
     }
     
     /**
@@ -153,6 +153,7 @@ class DataRetriever(private val database: Db) : IDataRetriever {
 
     companion object {
         private const val SCOREBOARD = "/scoreboard"
+        private const val TEAMS_MATCHUPS = "/teams/matchups"
         private const val STANDINGS = "/standings"
         private const val TRANSACTIONS = "/transactions"
         private const val BASE_URL =
