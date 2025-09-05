@@ -30,6 +30,7 @@ import com.landonpatmore.yahoofantasybot.bot.utils.toPercentage
 import io.reactivex.rxjava3.core.Observable
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
+import org.jsoup.select.Elements
 import kotlin.math.abs
 
 fun Observable<Document>.convertToMatchUpObject(): Observable<Pair<Team, Team>> =
@@ -80,14 +81,22 @@ fun Observable<Document>.convertToMatchUpObject(): Observable<Pair<Team, Team>> 
                 throw IllegalStateException("Not enough teams in matchup")
             }
             
-            println("[MatchUpDataTransformer] About to access teams[0]...")
-            val teamOneElement = teams[0]
-            println("[MatchUpDataTransformer] Successfully accessed teams[0], calling generateTeamData...")
+            println("[MatchUpDataTransformer] Teams class: ${teams.javaClass.name}")
+            println("[MatchUpDataTransformer] About to access first team...")
+            val teamsList = teams.toList()
+            println("[MatchUpDataTransformer] Converted to list, size: ${teamsList.size}")
+            
+            if (teamsList.size < 2) {
+                println("[MatchUpDataTransformer] ERROR: List conversion failed! Size: ${teamsList.size}")
+                throw IllegalStateException("List conversion resulted in insufficient teams")
+            }
+            
+            val teamOneElement = teamsList[0]
+            println("[MatchUpDataTransformer] Successfully got first team element, calling generateTeamData...")
             val teamOne = generateTeamData(teamOneElement)
             
-            println("[MatchUpDataTransformer] About to access teams[1]...")
-            val teamTwoElement = teams[1]
-            println("[MatchUpDataTransformer] Successfully accessed teams[1], calling generateTeamData...")
+            val teamTwoElement = teamsList[1]
+            println("[MatchUpDataTransformer] Successfully got second team element, calling generateTeamData...")
             val teamTwo = generateTeamData(teamTwoElement)
             
             println("[MatchUpDataTransformer] Successfully created pair: ${teamOne.name} vs ${teamTwo.name}")
