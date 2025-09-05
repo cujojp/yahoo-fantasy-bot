@@ -37,36 +37,48 @@ fun Observable<Document>.convertToMatchUpObject(): Observable<Pair<Team, Team>> 
     flatMapIterable { doc ->
         println("[MatchUpDataTransformer] Processing document for matchups")
         
-        // For teams/matchups endpoint, we need to get matchups from the team structure
-        // Each team has all matchups for the season, so we just need to get them from one team
-        val firstTeam = doc.select("league > teams > team").firstOrNull()
-        if (firstTeam == null) {
-            println("[MatchUpDataTransformer] No teams found in document")
-            return@flatMapIterable emptyList<Element>()
-        }
-        
-        val matchups = firstTeam.select("matchups > matchup")
-        println("[MatchUpDataTransformer] Found ${matchups.size} matchups from first team")
-        
-        // Debug: Log first few matchups structure
-        matchups.take(3).forEach { matchup ->
-            val week = matchup.select("week").first()?.text() ?: "0"
-            val teamsCount = matchup.select("teams > team").size
-            println("[MatchUpDataTransformer] Sample matchup - week: $week, teams: $teamsCount")
-        }
-        
         // Get current week from league data
         val currentWeek = doc.select("league > current_week").text().toIntOrNull() ?: 1
         println("[MatchUpDataTransformer] Current week from league data: $currentWeek")
         
-        // Filter for current week matchups only
-        val currentWeekMatchups = matchups.filter { matchup ->
-            val week = matchup.select("week").first()?.text()?.toIntOrNull() ?: 0
-            week == currentWeek
+        // Get all teams
+        val teams = doc.select("league > teams > team")
+        println("[MatchUpDataTransformer] Found ${teams.size} teams in league")
+        
+        // Collect all unique matchups for current week
+        val uniqueMatchups = mutableSetOf<String>() // Set to track unique matchup IDs
+        val allCurrentWeekMatchups = mutableListOf<Element>()
+        
+        teams.forEach { team ->
+            val teamId = team.select("team_id").text()
+            val matchups = team.select("matchups > matchup")
+            
+            // Filter for current week matchups only
+            val currentWeekMatchupsForTeam = matchups.filter { matchup ->
+                val week = matchup.select("week").first()?.text()?.toIntOrNull() ?: 0
+                week == currentWeek
+            }
+            
+            currentWeekMatchupsForTeam.forEach { matchup ->
+                // Create a unique key for this matchup based on the two team IDs
+                val matchupTeams = matchup.select("teams > team")
+                if (matchupTeams.size >= 2) {
+                    val teamsList = matchupTeams.toList()
+                    val team1Id = teamsList[0].select("team_id").text()
+                    val team2Id = teamsList[1].select("team_id").text()
+                    val matchupKey = listOf(team1Id, team2Id).sorted().joinToString("-")
+                    
+                    if (uniqueMatchups.add(matchupKey)) {
+                        // This is a new unique matchup
+                        allCurrentWeekMatchups.add(matchup)
+                        println("[MatchUpDataTransformer] Added unique matchup: $team1Id vs $team2Id")
+                    }
+                }
+            }
         }
         
-        println("[MatchUpDataTransformer] Found ${currentWeekMatchups.size} current week matchups")
-        currentWeekMatchups
+        println("[MatchUpDataTransformer] Found ${allCurrentWeekMatchups.size} unique current week matchups")
+        allCurrentWeekMatchups
     }.filter { matchup ->
         val teams = matchup.select("teams > team")
         println("[MatchUpDataTransformer] Processing matchup with ${teams.size} teams")
