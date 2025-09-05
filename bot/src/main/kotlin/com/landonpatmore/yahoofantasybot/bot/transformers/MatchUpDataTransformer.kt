@@ -49,7 +49,7 @@ fun Observable<Document>.convertToMatchUpObject(): Observable<Pair<Team, Team>> 
         
         // Debug: Log first few matchups structure
         matchups.take(3).forEach { matchup ->
-            val week = matchup.select("week").text()
+            val week = matchup.select("week").first()?.text() ?: "0"
             val teamsCount = matchup.select("teams > team").size
             println("[MatchUpDataTransformer] Sample matchup - week: $week, teams: $teamsCount")
         }
@@ -60,18 +60,18 @@ fun Observable<Document>.convertToMatchUpObject(): Observable<Pair<Team, Team>> 
         
         // Filter for current week matchups only
         val currentWeekMatchups = matchups.filter { matchup ->
-            val week = matchup.select("week").text().toIntOrNull() ?: 0
+            val week = matchup.select("week").first()?.text()?.toIntOrNull() ?: 0
             week == currentWeek
         }
         
         println("[MatchUpDataTransformer] Found ${currentWeekMatchups.size} current week matchups")
         currentWeekMatchups
     }.filter { matchup ->
-        val teams = matchup.select("team")
+        val teams = matchup.select("teams > team")
         println("[MatchUpDataTransformer] Processing matchup with ${teams.size} teams")
         teams.size >= 2
     }.map { matchup ->
-        val teams = matchup.select("team")
+        val teams = matchup.select("teams > team")
         val teamOne = generateTeamData(teams[0])
         val teamTwo = generateTeamData(teams[1])
         Pair(teamOne, teamTwo)
@@ -122,6 +122,8 @@ private fun generateTeamData(team: Element): Team {
     val winProbability = team.select("win_probability").text().toDouble() * 100
     val points = team.select("team_points").select("total").text().toDouble()
     val projectedPoints = team.select("team_projected_points").select("total").text().toDouble()
+    
+    println("[MatchUpDataTransformer] Team data - name: $name, winProb: $winProbability, projPoints: $projectedPoints")
 
     return Team(
         name,
