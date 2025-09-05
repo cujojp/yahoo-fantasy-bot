@@ -35,10 +35,28 @@ import kotlin.math.abs
 fun Observable<Document>.convertToMatchUpObject(): Observable<Pair<Team, Team>> =
     flatMapIterable { doc ->
         println("[MatchUpDataTransformer] Processing document for matchups")
-        val matchups = doc.select("matchup")
-        println("[MatchUpDataTransformer] Found ${matchups.size} matchup elements")
         
-        matchups
+        // Try direct matchup elements first (for scoreboard format)
+        var matchups = doc.select("matchup")
+        println("[MatchUpDataTransformer] Found ${matchups.size} direct matchup elements")
+        
+        // If no direct matchups, try the teams/matchups structure
+        if (matchups.isEmpty()) {
+            println("[MatchUpDataTransformer] No direct matchups found, trying teams/matchups structure")
+            // Get the first team's matchups (they all have the same matchups)
+            matchups = doc.select("teams > team").firstOrNull()?.select("matchups > matchup") ?: doc.select("matchup")
+            println("[MatchUpDataTransformer] Found ${matchups.size} matchups from teams structure")
+        }
+        
+        // Filter for current week matchups only
+        val currentWeekMatchups = matchups.filter { matchup ->
+            val week = matchup.select("week").text().toIntOrNull() ?: 0
+            println("[MatchUpDataTransformer] Matchup week: $week")
+            week == 1 // TODO: Make this dynamic based on current week
+        }
+        
+        println("[MatchUpDataTransformer] Found ${currentWeekMatchups.size} current week matchups")
+        currentWeekMatchups
     }.filter { matchup ->
         val teams = matchup.select("team")
         println("[MatchUpDataTransformer] Processing matchup with ${teams.size} teams")

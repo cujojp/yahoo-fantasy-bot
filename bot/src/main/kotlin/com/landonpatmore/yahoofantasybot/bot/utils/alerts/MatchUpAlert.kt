@@ -42,7 +42,15 @@ class MatchUpAlert : BaseAlert() {
             println("[MatchUpAlert] Fetching teams data...")
             val data = dataRetriever.yahooApiRequest(YahooApiRequest.TeamsData)
             println("[MatchUpAlert] Data fetched, sending to bridge...")
-            println("[MatchUpAlert] Root element: ${data.select("fantasy_content").first()}")
+            
+            // Log the structure of the data
+            val teams = data.select("teams > team")
+            println("[MatchUpAlert] Found ${teams.size} teams in response")
+            if (teams.isNotEmpty()) {
+                val firstTeamMatchups = teams.first().select("matchups > matchup")
+                println("[MatchUpAlert] First team has ${firstTeamMatchups.size} matchups")
+            }
+            
             matchUpBridge.consumer.accept(data)
             println("[MatchUpAlert] Data sent to matchUpBridge")
         } catch (e: Exception) {
