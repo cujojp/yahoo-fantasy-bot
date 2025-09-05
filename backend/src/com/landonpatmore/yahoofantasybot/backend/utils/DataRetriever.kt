@@ -32,7 +32,7 @@ class DataRetriever(private val oauthManager: BackendOAuthManager) {
     sealed class YahooApiRequest(val url: String) {
         object Transactions : YahooApiRequest("/transactions")
         object Standings : YahooApiRequest("/standings")
-        object TeamsData : YahooApiRequest("/teams/matchups;roster_positions.position_type=P/roster;week=current")
+        object TeamsData : YahooApiRequest("/teams/matchups")
     }
     
     fun yahooApiRequest(request: YahooApiRequest): String {
@@ -42,6 +42,7 @@ class DataRetriever(private val oauthManager: BackendOAuthManager) {
         val fullUrl = "https://fantasysports.yahooapis.com/fantasy/v2/league/$leagueKey${request.url}"
         
         println("[DataRetriever] Full URL: $fullUrl")
+        println("[DataRetriever] League key: $leagueKey")
         
         val httpRequest = Unirest.get(fullUrl)
         val authenticatedRequest = oauthManager.authenticateRequest(httpRequest)
@@ -51,7 +52,18 @@ class DataRetriever(private val oauthManager: BackendOAuthManager) {
         println("[DataRetriever] Response status: ${response.status}")
         
         if (response.status != 200) {
-            throw RuntimeException("Yahoo API request failed with status ${response.status}: ${response.body}")
+            val errorMessage = when (response.status) {
+                500 -> "Yahoo API internal server error. This might be due to: 1) Complex query parameters, 2) Temporary Yahoo service issues, or 3) Invalid league configuration."
+                401 -> "Authentication failed. Please re-authenticate with Yahoo."
+                403 -> "Access forbidden. Check if you have permission to access this league."
+                404 -> "League not found. Verify the league ID and game key are correct."
+                else -> "Yahoo API request failed with status ${response.status}"
+            }
+            
+            println("[DataRetriever] Error details: $errorMessage")
+            println("[DataRetriever] Response body: ${response.body}")
+            
+            throw RuntimeException("$errorMessage (Status: ${response.status})")
         }
         
         return response.body

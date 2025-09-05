@@ -52,7 +52,12 @@ class ManualAlerts extends React.Component {
                     }
                 }
             } else {
-                message.error(data.error || `Failed to send ${this.getAlertTypeName(alertType)} alert`)
+                // Show more detailed error message
+                const errorMsg = data.error || `Failed to send ${this.getAlertTypeName(alertType)} alert`
+                message.error(errorMsg, 10) // Show for 10 seconds
+                
+                // Log full error for debugging
+                console.error(`${alertType} alert error:`, data)
             }
         } catch (error) {
             console.error(`Error triggering ${alertType} alert:`, error)
