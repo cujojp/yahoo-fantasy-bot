@@ -150,8 +150,20 @@ class Arbiter(
             .doOnNext { println("[Arbiter] MatchUpBridge received document") }
             .convertToMatchUpObject()
             .doOnNext { println("[Arbiter] Converted to matchup object: ${it.first.name} vs ${it.second.name}") }
+            .doOnError { error ->
+                println("[Arbiter] Error in convertToMatchUpObject: ${error.message}")
+                error.printStackTrace()
+            }
+            .onErrorResumeNext { error ->
+                println("[Arbiter] Resuming after error in convertToMatchUpObject")
+                Observable.empty()
+            }
             .convertToMatchUpMessage()
             .doOnNext { println("[Arbiter] Converted to message: ${it.message}") }
+            .doOnError { error ->
+                println("[Arbiter] Error in convertToMatchUpMessage: ${error.message}")
+                error.printStackTrace()
+            }
 
         transactions.subscribe(
             { message -> 
@@ -159,8 +171,11 @@ class Arbiter(
                 messageBridge.consumer.accept(message)
             },
             { error ->
-                println("[Arbiter] Error in matchup bridge: ${error.message}")
+                println("[Arbiter] Error in matchup bridge subscription: ${error.message}")
                 error.printStackTrace()
+            },
+            {
+                println("[Arbiter] MatchUp bridge stream completed")
             }
         )
     }

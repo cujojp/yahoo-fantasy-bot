@@ -123,18 +123,42 @@ fun Observable<Pair<Team, Team>>.convertToScoreUpdateMessage(closeScoreUpdate: B
 private fun generateTeamData(team: Element): Team {
     try {
         println("[MatchUpDataTransformer] Generating team data from element: ${team.tagName()}")
+        println("[MatchUpDataTransformer] Team HTML: ${team.html().take(200)}...")
         
         val id = team.select("team_id").text().toIntOrNull() ?: 0
-        val name = team.select("name").text()
-        val waiverPriority = team.select("waiver_priority").text().toIntOrNull()
-        val faabBalance = team.select("faab_balance").text().toIntOrNull()
-        val numberOfMoves = team.select("number_of_moves").text().toIntOrNull() ?: 0
-        val numberOfTrades = team.select("number_of_trades").text().toIntOrNull() ?: 0
-        val winProbability = team.select("win_probability").text().toDoubleOrNull()?.times(100) ?: 0.0
-        val points = team.select("team_points").select("total").text().toDoubleOrNull() ?: 0.0
-        val projectedPoints = team.select("team_projected_points").select("total").text().toDoubleOrNull() ?: 0.0
+        println("[MatchUpDataTransformer] Extracted team_id: $id")
         
-        println("[MatchUpDataTransformer] Team data - name: $name, id: $id, winProb: $winProbability, projPoints: $projectedPoints")
+        val name = team.select("name").text()
+        println("[MatchUpDataTransformer] Extracted name: '$name'")
+        
+        val waiverPriority = team.select("waiver_priority").text().toIntOrNull()
+        println("[MatchUpDataTransformer] Extracted waiver_priority: $waiverPriority")
+        
+        val faabBalance = team.select("faab_balance").text().toIntOrNull()
+        println("[MatchUpDataTransformer] Extracted faab_balance: $faabBalance")
+        
+        val numberOfMoves = team.select("number_of_moves").text().toIntOrNull() ?: 0
+        println("[MatchUpDataTransformer] Extracted number_of_moves: $numberOfMoves")
+        
+        val numberOfTrades = team.select("number_of_trades").text().toIntOrNull() ?: 0
+        println("[MatchUpDataTransformer] Extracted number_of_trades: $numberOfTrades")
+        
+        val winProbabilityText = team.select("win_probability").text()
+        println("[MatchUpDataTransformer] Win probability text: '$winProbabilityText'")
+        val winProbability = winProbabilityText.toDoubleOrNull()?.times(100) ?: 0.0
+        println("[MatchUpDataTransformer] Calculated win_probability: $winProbability")
+        
+        val pointsText = team.select("team_points").select("total").text()
+        println("[MatchUpDataTransformer] Points text: '$pointsText'")
+        val points = pointsText.toDoubleOrNull() ?: 0.0
+        println("[MatchUpDataTransformer] Calculated points: $points")
+        
+        val projectedPointsText = team.select("team_projected_points").select("total").text()
+        println("[MatchUpDataTransformer] Projected points text: '$projectedPointsText'")
+        val projectedPoints = projectedPointsText.toDoubleOrNull() ?: 0.0
+        println("[MatchUpDataTransformer] Calculated projected_points: $projectedPoints")
+        
+        println("[MatchUpDataTransformer] Team data summary - name: $name, id: $id, winProb: $winProbability, projPoints: $projectedPoints")
         
         if (name.isEmpty()) {
             println("[MatchUpDataTransformer] WARNING: Team name is empty")
@@ -153,6 +177,7 @@ private fun generateTeamData(team: Element): Team {
         )
     } catch (e: Exception) {
         println("[MatchUpDataTransformer] Error generating team data: ${e.message}")
+        println("[MatchUpDataTransformer] Exception type: ${e.javaClass.name}")
         e.printStackTrace()
         throw e
     }
