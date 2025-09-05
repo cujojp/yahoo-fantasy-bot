@@ -37,6 +37,8 @@ import org.quartz.TriggerBuilder.newTrigger
 import org.quartz.impl.StdSchedulerFactory
 import org.quartz.impl.matchers.GroupMatcher
 import java.util.*
+import io.reactivex.rxjava3.core.Observable
+import java.util.concurrent.TimeUnit
 
 
 class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
@@ -48,6 +50,9 @@ class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
         println("[AlertsRunner] Starting AlertsRunner...")
         scheduler.start()
         println("[AlertsRunner] Quartz scheduler started")
+        println("[AlertsRunner] Scheduler metadata: ${scheduler.metaData}")
+        println("[AlertsRunner] Scheduler running: ${scheduler.isStarted}")
+        println("[AlertsRunner] Scheduler standby: ${scheduler.isInStandbyMode}")
         
         configurationBridge.eventStream
             .ofType(Configuration.Alerts::class.java)
@@ -66,6 +71,27 @@ class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
                 }
             }
         println("[AlertsRunner] AlertsRunner started and listening for configuration updates")
+        
+        // Start a periodic job status checker
+        Observable.interval(30, 30, TimeUnit.SECONDS)
+            .subscribe {
+                checkJobStatuses()
+            }
+    }
+    
+    private fun checkJobStatuses() {
+        println("[AlertsRunner] === JOB STATUS CHECK ===")
+        println("[AlertsRunner] Current time: ${java.time.LocalDateTime.now()}")
+        
+        for (groupName: String in scheduler.jobGroupNames) {
+            for (jobKey: JobKey in scheduler.getJobKeys(GroupMatcher.jobGroupEquals(groupName))) {
+                val triggers = scheduler.getTriggersOfJob(jobKey)
+                triggers.forEach { trigger ->
+                    println("[AlertsRunner] Job ${jobKey.name}: Next fire time: ${trigger.nextFireTime}, State: ${scheduler.getTriggerState(trigger.key)}")
+                }
+            }
+        }
+        println("[AlertsRunner] ======================")
     }
     
     private fun areAlertsEqual(list1: List<Alert>, list2: List<Alert>): Boolean {
