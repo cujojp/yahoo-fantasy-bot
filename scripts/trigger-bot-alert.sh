@@ -50,7 +50,8 @@ TEST_UUID=$((9000000 + RANDOM))
 psql "$DATABASE_PUBLIC_URL" -c "DELETE FROM alerts WHERE hour = $NEXT_HOUR AND minute = $NEXT_MINUTE;" 2>/dev/null
 
 # Insert the new alert (using UUID for id column)
-SQL_COMMAND="INSERT INTO alerts (id, type, hour, minute, start_month, end_month, day_of_week) VALUES (gen_random_uuid(), $ALERT_TYPE, $NEXT_HOUR, $NEXT_MINUTE, 1, 12, $CRON_DAY);"
+# Use month range 8-3 (August to March) to match other alerts
+SQL_COMMAND="INSERT INTO alerts (id, type, hour, minute, start_month, end_month, day_of_week) VALUES (gen_random_uuid(), $ALERT_TYPE, $NEXT_HOUR, $NEXT_MINUTE, 8, 3, $CRON_DAY);"
 
 echo "Running SQL: $SQL_COMMAND"
 psql "$DATABASE_PUBLIC_URL" -c "$SQL_COMMAND"
