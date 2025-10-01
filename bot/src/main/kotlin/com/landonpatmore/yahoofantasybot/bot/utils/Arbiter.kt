@@ -96,10 +96,29 @@ class Arbiter(
                         val transactionCount = event.select("transaction").size
                         println("[Arbiter] Total transactions in response: $transactionCount")
                         
-                        transactionsBridge.consumer.accept(Pair(checkTime, event))
+                        if (transactionCount > 0) {
+                            // Store the current time before processing
+                            val processingStartTime = System.currentTimeMillis()
+                            
+                            transactionsBridge.consumer.accept(Pair(checkTime, event))
+                            
+                            // Only update latest time if we actually had transactions to process
+                            // This prevents losing transactions if processing fails
+                            println("[Arbiter] Processing $transactionCount transactions...")
+                            
+                            // TODO: Ideally we should wait for confirmation that transactions were sent
+                            // For now, we'll add a small delay to reduce race condition likelihood
+                            Thread.sleep(2000) // 2 second delay
+                            
+                            database.saveLatestTimeChecked(processingStartTime)
+                            println("[Arbiter] Updated latest check time to: $processingStartTime")
+                        } else {
+                            // No transactions, safe to update the check time
+                            database.saveLatestTimeChecked(System.currentTimeMillis())
+                            println("[Arbiter] No new transactions found, updated check time")
+                        }
                     }
-                    database.saveLatestTimeChecked(System.currentTimeMillis())
-                    println("[Arbiter] Transaction check cycle completed successfully")
+                    println("[Arbiter] Transaction check cycle completed")
                 } catch (e: Exception) {
                     println("[Arbiter] ERROR during transaction check: ${e.message}")
                     e.printStackTrace()
