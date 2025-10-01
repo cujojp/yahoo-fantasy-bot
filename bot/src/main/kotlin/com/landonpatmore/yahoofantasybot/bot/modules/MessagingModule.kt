@@ -34,6 +34,9 @@ import com.landonpatmore.yahoofantasybot.bot.utils.DataRetriever
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessageHistory
+import com.landonpatmore.yahoofantasybot.shared.services.YahooNewsService
+import com.github.scribejava.apis.YahooApi20
+import com.github.scribejava.core.oauth.OAuth20Service
 import org.koin.dsl.module
 
 val messagingModule = module {
@@ -43,10 +46,23 @@ val messagingModule = module {
     single<OpenAIService?> { 
         val apiKey = EnvVariable.Str.OpenAIApiKey.variable
         if (apiKey.isNotEmpty()) {
-            // Try to create YahooNewsService if possible
-            val dataRetriever = get<DataRetriever>()
+            // Create YahooNewsService directly here instead of through DataRetriever
+            val db = get<Db>()
             val yahooNewsService = try {
-                dataRetriever.createYahooNewsService()
+                val tokenData = db.getLatestTokenData()
+                if (tokenData != null) {
+                    val oauthService = com.github.scribejava.core.builder.ServiceBuilder(
+                        EnvVariable.Str.YahooClientId.variable
+                    )
+                        .apiSecret(EnvVariable.Str.YahooClientSecret.variable)
+                        .callback("oob")
+                        .build(YahooApi20.instance())
+                    
+                    YahooNewsService(oauthService, tokenData.second)
+                } else {
+                    println("MessagingModule: No OAuth token available for YahooNewsService")
+                    null
+                }
             } catch (e: Exception) {
                 println("MessagingModule: Could not create YahooNewsService: ${e.message}")
                 null
