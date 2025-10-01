@@ -170,7 +170,8 @@ class Db(
      */
     fun saveLatestTimeChecked(time: Long) {
         transaction {
-            dropTopRows(LatestTimesTable, LatestTimesTable.latestTime)
+            // Clear all existing entries - there should only ever be one!
+            LatestTimesTable.deleteAll()
 
             LatestTimesTable.insert {
                 it[latestTime] = time
