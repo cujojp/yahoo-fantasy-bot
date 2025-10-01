@@ -45,6 +45,7 @@ class YahooNewsService(
     companion object {
         private const val YAHOO_SPORTS_API_BASE = "https://fantasysports.yahooapis.com/fantasy/v2"
         private const val CACHE_DURATION_MINUTES = 15
+        private const val YAHOO_GAME_KEY = "461" // NFL 2024/2025
     }
     
     private val newsCache = mutableMapOf<String, Pair<String, LocalDateTime>>()
@@ -139,12 +140,36 @@ class YahooNewsService(
      */
     private fun fetchSpecificPlayerNews(playerId: String): String {
         return try {
-            // Yahoo Fantasy Sports API may have player news endpoints
-            val url = "$YAHOO_SPORTS_API_BASE/player/$playerId/news"
-            val response = makeYahooApiRequest(url)
+            // Try Yahoo API endpoint for player data
+            val playerKey = "${YAHOO_GAME_KEY}.p.$playerId"
+            val url = "https://fantasysports.yahooapis.com/fantasy/v2/player/$playerKey"
             
-            // Parse response for news content
-            parseNewsFromResponse(response)
+            val doc = makeYahooApiRequest(url)
+            
+            // Extract real player data: injury status, notes, etc.
+            val injuryNote = doc.select("injury_note").text()
+            val status = doc.select("status").text()
+            val statusFull = doc.select("status_full").text()
+            val hasNotes = doc.select("has_player_notes").text() == "1"
+            
+            val updates = mutableListOf<String>()
+            
+            // Add injury information if available
+            if (injuryNote.isNotEmpty()) {
+                updates.add("Injury: $injuryNote")
+            }
+            
+            // Add status if not healthy
+            if (status.isNotEmpty() && status != "NA") {
+                updates.add("Status: $statusFull")
+            }
+            
+            // Note if player has updates available
+            if (hasNotes) {
+                updates.add("Recent updates available")
+            }
+            
+            updates.joinToString(". ")
         } catch (e: Exception) {
             println("Player-specific news fetch failed: ${e.message}")
             ""

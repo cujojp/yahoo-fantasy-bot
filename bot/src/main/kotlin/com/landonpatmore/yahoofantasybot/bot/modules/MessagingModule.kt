@@ -43,9 +43,16 @@ val messagingModule = module {
     single<OpenAIService?> { 
         val apiKey = EnvVariable.Str.OpenAIApiKey.variable
         if (apiKey.isNotEmpty()) {
-            // Don't create YahooNewsService here as token might not be ready
-            // Just create OpenAIService without it for now
-            OpenAIService(apiKey, null)
+            // Try to create YahooNewsService if possible
+            val dataRetriever = get<DataRetriever>()
+            val yahooNewsService = try {
+                dataRetriever.createYahooNewsService()
+            } catch (e: Exception) {
+                println("MessagingModule: Could not create YahooNewsService: ${e.message}")
+                null
+            }
+            
+            OpenAIService(apiKey, yahooNewsService)
         } else {
             null
         }
