@@ -267,15 +267,21 @@ class YahooNewsService(
      */
     private fun getCurrentNFLWeek(): Int {
         val now = LocalDateTime.now()
-        val month = now.monthValue
         
-        return when {
-            month in 9..10 -> ((now.dayOfMonth / 7) + 1).coerceIn(1, 8)
-            month == 11 -> ((now.dayOfMonth / 7) + 9).coerceIn(9, 12)
-            month == 12 -> ((now.dayOfMonth / 7) + 13).coerceIn(13, 18)
-            month == 1 -> if (now.dayOfMonth < 15) 18 else 1
-            else -> 1
+        // NFL 2025 season starts September 4, 2025
+        val seasonStart = LocalDateTime.of(2025, 9, 4, 0, 0)
+        
+        // If before season start, return week 1
+        if (now.isBefore(seasonStart)) {
+            return 1
         }
+        
+        // Calculate weeks since season start
+        val daysSinceStart = java.time.Duration.between(seasonStart, now).toDays()
+        val weeksSinceStart = (daysSinceStart / 7).toInt()
+        
+        // NFL regular season is 18 weeks, playoffs extend to ~22
+        return (weeksSinceStart + 1).coerceIn(1, 22)
     }
 }
 
