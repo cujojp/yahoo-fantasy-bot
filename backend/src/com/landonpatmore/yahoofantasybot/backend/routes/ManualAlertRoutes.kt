@@ -35,6 +35,8 @@ import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
+import org.jsoup.parser.Parser
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import kotlin.math.abs
@@ -225,34 +227,35 @@ data class StandingTeam(
 
 // Helper functions
 private fun parseMatchupData(teamsData: String): Pair<Team, Team>? {
-    try {
-        val doc = Jsoup.parse(teamsData)
-        val teams = doc.select("team")
-        
+    return try {
+        val doc = Jsoup.parse(teamsData, "", Parser.xmlParser())
+        val currentWeek = doc.select("league > current_week").text().toIntOrNull() ?: 1
+
+        // Scope to one matchup before reading any team fields. A bare select("team")
+        // also matches the nested copy of both teams inside every other matchup, so
+        // teams[0] was the top level team element and its name read as all 29 team
+        // names concatenated together.
+        val matchup = doc.select("league > teams > team > matchups > matchup")
+            .firstOrNull { it.select("week").first()?.text()?.toIntOrNull() == currentWeek }
+            ?: return null
+
+        val teams = matchup.select("teams > team")
         if (teams.size < 2) return null
-        
-        val teamOne = teams[0]
-        val teamTwo = teams[1]
-        
-        return Pair(
-            Team(
-                name = teamOne.select("name").text(),
-                points = teamOne.select("team_points > total").text(),
-                projectedPoints = teamOne.select("team_projected_points > total").text(),
-                winProbability = teamOne.select("win_probability").text().toDoubleOrNull() ?: 0.0
-            ),
-            Team(
-                name = teamTwo.select("name").text(),
-                points = teamTwo.select("team_points > total").text(),
-                projectedPoints = teamTwo.select("team_projected_points > total").text(),
-                winProbability = teamTwo.select("win_probability").text().toDoubleOrNull() ?: 0.0
-            )
-        )
+
+        Pair(parseTeam(teams[0]), parseTeam(teams[1]))
     } catch (e: Exception) {
         println("[ManualAlert] Error parsing matchup data: ${e.message}")
-        return null
+        null
     }
 }
+
+private fun parseTeam(team: Element): Team = Team(
+    name = team.select("name").first()?.text().orEmpty(),
+    points = team.select("team_points > total").first()?.text().orEmpty(),
+    projectedPoints = team.select("team_projected_points > total").first()?.text().orEmpty(),
+    // Yahoo sends this as a fraction, for example 0.35.
+    winProbability = (team.select("win_probability").first()?.text()?.toDoubleOrNull() ?: 0.0) * 100
+)
 
 private fun parseScoreData(teamsData: String): Pair<Team, Team>? {
     // Same as parseMatchupData since they use the same data
@@ -260,22 +263,23 @@ private fun parseScoreData(teamsData: String): Pair<Team, Team>? {
 }
 
 private fun parseStandingsData(standingsData: String): List<StandingTeam> {
-    try {
-        val doc = Jsoup.parse(standingsData)
-        val teams = doc.select("team")
-        
-        return teams.map { team: org.jsoup.nodes.Element ->
+    return try {
+        val doc = Jsoup.parse(standingsData, "", Parser.xmlParser())
+
+        doc.select("league > standings > teams > team").map { team ->
             StandingTeam(
-                rank = team.select("team_standings > rank").text(),
-                name = team.select("name").text(),
-                record = "${team.select("team_standings > outcome_totals > wins").text()}-${team.select("team_standings > outcome_totals > losses").text()}-${team.select("team_standings > outcome_totals > ties").text()}",
-                pointsFor = team.select("team_standings > points_for").text(),
-                pointsAgainst = team.select("team_standings > points_against").text()
+                rank = team.select("team_standings > rank").first()?.text().orEmpty(),
+                name = team.select("name").first()?.text().orEmpty(),
+                record = "${team.select("team_standings > outcome_totals > wins").first()?.text().orEmpty()}-" +
+                        "${team.select("team_standings > outcome_totals > losses").first()?.text().orEmpty()}-" +
+                        "${team.select("team_standings > outcome_totals > ties").first()?.text().orEmpty()}",
+                pointsFor = team.select("team_standings > points_for").first()?.text().orEmpty(),
+                pointsAgainst = team.select("team_standings > points_against").first()?.text().orEmpty()
             )
         }.sortedBy { it.rank.toIntOrNull() ?: 999 }
     } catch (e: Exception) {
         println("[ManualAlert] Error parsing standings data: ${e.message}")
-        return emptyList()
+        emptyList()
     }
 }
 
