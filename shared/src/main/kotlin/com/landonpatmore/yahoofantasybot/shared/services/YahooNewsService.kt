@@ -31,6 +31,8 @@ import com.github.scribejava.core.oauth.OAuth20Service
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.parser.Parser
+import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
+import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -45,10 +47,11 @@ class YahooNewsService(
     companion object {
         private const val YAHOO_SPORTS_API_BASE = "https://fantasysports.yahooapis.com/fantasy/v2"
         private const val CACHE_DURATION_MINUTES = 15
-        private const val YAHOO_GAME_KEY = "461" // NFL 2024/2025
     }
     
     private val newsCache = mutableMapOf<String, Pair<String, LocalDateTime>>()
+    private var gameKeyCache: String? = null
+    private var weekCache: Pair<Int, LocalDateTime>? = null
     
     /**
      * Fetches recent news context for a list of players
@@ -141,7 +144,8 @@ class YahooNewsService(
     private fun fetchSpecificPlayerNews(playerId: String): String {
         return try {
             // Try Yahoo API endpoint for player data
-            val playerKey = "${YAHOO_GAME_KEY}.p.$playerId"
+            val gameKey = gameKey() ?: return ""
+            val playerKey = "$gameKey.p.$playerId"
             val url = "https://fantasysports.yahooapis.com/fantasy/v2/player/$playerKey"
             
             val doc = makeYahooApiRequest(url)
@@ -253,7 +257,11 @@ class YahooNewsService(
         } else {
             // Fallback to current week/season context
             val currentWeek = getCurrentNFLWeek()
-            val fallback = "Context: Week $currentWeek of NFL season"
+            val fallback = if (currentWeek != null) {
+                "Context: Week $currentWeek of the NFL season"
+            } else {
+                "Context: NFL season"
+            }
             println("YahooNewsService: No news found, using fallback context: $fallback")
             fallback
         }
@@ -263,25 +271,48 @@ class YahooNewsService(
     }
     
     /**
-     * Gets current NFL week (simplified)
+     * Resolves the current season's game key from Yahoo instead of hardcoding it,
+     * so player lookups keep working when the season rolls over.
      */
-    private fun getCurrentNFLWeek(): Int {
-        val now = LocalDateTime.now()
-        
-        // NFL 2025 season starts September 4, 2025
-        val seasonStart = LocalDateTime.of(2025, 9, 4, 0, 0)
-        
-        // If before season start, return week 1
-        if (now.isBefore(seasonStart)) {
-            return 1
+    private fun gameKey(): String? {
+        gameKeyCache?.let { return it }
+
+        return try {
+            makeYahooApiRequest("$YAHOO_SPORTS_API_BASE/game/nfl")
+                .select("game_key").first()?.text()
+                ?.takeIf { it.isNotEmpty() }
+                ?.also { gameKeyCache = it }
+        } catch (e: Exception) {
+            println("YahooNewsService: could not resolve game key: ${e.message}")
+            null
         }
-        
-        // Calculate weeks since season start
-        val daysSinceStart = java.time.Duration.between(seasonStart, now).toDays()
-        val weeksSinceStart = (daysSinceStart / 7).toInt()
-        
-        // NFL regular season is 18 weeks, playoffs extend to ~22
-        return (weeksSinceStart + 1).coerceIn(1, 22)
+    }
+
+    /**
+     * Current NFL week straight from Yahoo's league metadata. Yahoo is the source of
+     * truth, so this stays right across seasons and reads 1 during the preseason.
+     * Returns null when it cannot be determined, so callers can leave the week out
+     * rather than guess at it.
+     */
+    private fun getCurrentNFLWeek(): Int? {
+        weekCache?.let { (week, fetchedAt) ->
+            if (Duration.between(fetchedAt, LocalDateTime.now()).toMinutes() < CACHE_DURATION_MINUTES) {
+                return week
+            }
+        }
+
+        val gameKey = gameKey() ?: return null
+        val leagueId = EnvVariable.Str.YahooLeagueId.variable
+        if (leagueId.isEmpty()) return null
+
+        return try {
+            makeYahooApiRequest("$YAHOO_SPORTS_API_BASE/league/$gameKey.l.$leagueId")
+                .select("current_week").first()?.text()?.toIntOrNull()
+                ?.also { weekCache = Pair(it, LocalDateTime.now()) }
+        } catch (e: Exception) {
+            println("YahooNewsService: could not resolve current week: ${e.message}")
+            null
+        }
     }
 }
 
