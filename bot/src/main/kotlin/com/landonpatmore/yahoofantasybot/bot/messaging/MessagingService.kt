@@ -24,9 +24,9 @@
 
 package com.landonpatmore.yahoofantasybot.bot.messaging
 
+import com.landonpatmore.yahoofantasybot.shared.messaging.WebhookPayload
 import com.mashape.unirest.http.exceptions.UnirestException
 import com.mashape.unirest.request.body.RequestBodyEntity
-import org.json.JSONObject
 
 abstract class MessagingService(protected val url: String) : IMessagingService {
 
@@ -61,11 +61,8 @@ abstract class MessagingService(protected val url: String) : IMessagingService {
      * the old concatenation came out valid, so we turn those back into newlines here and
      * let the encoder do the escaping.
      */
-    protected fun jsonBody(vararg fields: Pair<String, String>): String {
-        val json = JSONObject()
-        fields.forEach { (key, value) -> json.put(key, value.replace("\\n", "\n")) }
-        return json.toString()
-    }
+    protected fun jsonBody(vararg fields: Pair<String, String>): String =
+        WebhookPayload.of(*fields.map { (key, value) -> key to value.replace("\\n", "\n") }.toTypedArray())
 
     override fun createMessage(messageInfo: Pair<String, String>, title: Boolean): Int? {
         return try {

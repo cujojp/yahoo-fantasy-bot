@@ -31,6 +31,7 @@ import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessageHistory
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessagingService
 import com.landonpatmore.yahoofantasybot.shared.messaging.AlertFormatting
+import com.landonpatmore.yahoofantasybot.shared.messaging.WebhookPayload
 import com.mashape.unirest.http.Unirest
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -386,19 +387,19 @@ private fun sendMessage(
             0 -> { // Discord
                 Unirest.post(service.url)
                     .header("Content-Type", "application/json")
-                    .body("""{"content": "${message.replace("\"", "\\\"").replace("\n", "\\n")}"}""")
+                    .body(WebhookPayload.of("content" to message))
                     .asJson()
             }
             1 -> { // Slack
                 Unirest.post(service.url)
                     .header("Content-Type", "application/json")
-                    .body("""{"text": "${message.replace("\"", "\\\"").replace("\n", "\\n")}"}""")
+                    .body(WebhookPayload.of("text" to message))
                     .asJson()
             }
             2 -> { // GroupMe
                 Unirest.post("https://api.groupme.com/v3/bots/post")
                     .header("Content-Type", "application/json")
-                    .body("""{"bot_id": "${service.url}", "text": "${message.replace("\"", "\\\"").replace("\n", "\\n")}"}""")
+                    .body(WebhookPayload.of("bot_id" to service.url, "text" to message))
                     .asJson()
             }
             else -> null
