@@ -37,7 +37,9 @@ class GroupMe(botId: String) : MessagingService(botId) {
     override fun generateRequest(message: String): RequestBodyEntity =
         Unirest.post(postUrl)
             .header("Content-Type", "application/json")
-            .body("{\"text\" : \"$message\", \"bot_id\" : \"${url}\"}")
+            .body(payload(message))
+
+    internal fun payload(message: String): String = jsonBody("text" to message, "bot_id" to url)
 
     override fun cleanMessage(message: String): String =
         message.replace("**", "")

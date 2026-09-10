@@ -51,13 +51,13 @@ class EnhancedMessagingService(
         sendMessageWithHistory(context)
     }
 
-    override fun sendMessage(message: String) {
+    override fun sendMessage(message: String): Int? {
         // For direct string messages, create minimal context
         val context = MessageContext.forTestMessage(message)
-        sendMessageWithHistory(context)
+        return sendMessageWithHistory(context)
     }
 
-    override fun createMessage(message: Pair<String, String>, title: Boolean) {
+    override fun createMessage(message: Pair<String, String>, title: Boolean): Int? {
         val context = MessageContext(
             title = message.first,
             originalMessage = message.second,
@@ -66,7 +66,7 @@ class EnhancedMessagingService(
             playersInvolved = extractPlayersFromContent(message.second)
         )
         
-        sendMessageWithHistory(context)
+        return sendMessageWithHistory(context)
     }
 
     override fun cleanMessage(message: String): String {
@@ -91,7 +91,7 @@ class EnhancedMessagingService(
     /**
      * Internal method to send message and log history
      */
-    private fun sendMessageWithHistory(context: MessageContext) {
+    private fun sendMessageWithHistory(context: MessageContext): Int? {
         var responseCode: Int? = null
         var success = false
         var errorMessage: String? = null
@@ -99,13 +99,19 @@ class EnhancedMessagingService(
         try {
             println("EnhancedMessagingService: Sending ${context.messageType} message to $serviceName")
             
-            // Use the wrapped service to send the message
-            wrappedService.createMessage(context.toPair())
-            
-            success = true
-            responseCode = 200 // Assume success if no exception
-            println("EnhancedMessagingService: Message sent successfully to $serviceName")
-            
+            // Record what the webhook actually answered. This used to hardcode
+            // success = true and 200 whenever no exception was thrown, so a Discord 400
+            // was filed as a successful send and the history table quietly disagreed with
+            // what was in the channel.
+            responseCode = wrappedService.createMessage(context.toPair())
+            success = responseCode != null && responseCode in 200..299
+
+            if (success) {
+                println("EnhancedMessagingService: Message sent to $serviceName ($responseCode)")
+            } else {
+                errorMessage = "Send to $serviceName returned ${responseCode ?: "no response"}"
+                println("EnhancedMessagingService: $errorMessage")
+            }
         } catch (e: UnirestException) {
             errorMessage = "HTTP Error: ${e.message}"
             responseCode = extractResponseCode(e)
@@ -128,6 +134,8 @@ class EnhancedMessagingService(
         } catch (e: Exception) {
             println("EnhancedMessagingService: Failed to save message history: ${e.message}")
         }
+
+        return responseCode
     }
 
     /**

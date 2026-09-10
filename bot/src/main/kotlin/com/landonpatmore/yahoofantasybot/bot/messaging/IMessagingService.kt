@@ -34,9 +34,11 @@ interface IMessagingService : Consumer<Pair<String, String>> {
     )
     fun cleanMessage(message: String): String
 
-    fun sendMessage(message: String)
+    /** Returns the HTTP status of the send, or null if it never got that far. */
+    fun sendMessage(message: String): Int?
 
-    fun createMessage(message: Pair<String, String>, title: Boolean = true)
+    /** Returns the HTTP status of the last send, or null if it never got that far. */
+    fun createMessage(message: Pair<String, String>, title: Boolean = true): Int?
 
     fun correctMessage(message: String): String
 

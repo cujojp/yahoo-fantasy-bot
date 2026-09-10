@@ -35,7 +35,9 @@ class Discord(url: String) : MessagingService(url) {
     override fun generateRequest(message: String): RequestBodyEntity =
         Unirest.post(url)
             .header("Content-Type", "application/json")
-            .body("{\"content\" : \"$message\"}")
+            .body(payload(message))
+
+    internal fun payload(message: String): String = jsonBody("content" to message)
 
     override fun cleanMessage(message: String): String = message
 

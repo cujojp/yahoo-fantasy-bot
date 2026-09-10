@@ -26,6 +26,7 @@ package com.landonpatmore.yahoofantasybot.bot.messaging
 
 import com.mashape.unirest.http.exceptions.UnirestException
 import com.mashape.unirest.request.body.RequestBodyEntity
+import org.json.JSONObject
 
 abstract class MessagingService(protected val url: String) : IMessagingService {
 
@@ -42,20 +43,41 @@ abstract class MessagingService(protected val url: String) : IMessagingService {
     }
 
     @Throws(UnirestException::class)
-    override fun sendMessage(message: String) {
+    override fun sendMessage(message: String): Int {
         val response = generateRequest(cleanMessage(message)).asJson()
         println("$name status code: ${response.status}")
+        return response.status
     }
 
-    override fun createMessage(messageInfo: Pair<String, String>, title: Boolean) {
-        try {
+    /**
+     * Builds the request body as real JSON.
+     *
+     * These payloads used to be assembled by interpolating the message straight into a
+     * JSON string literal, so a double quote anywhere in the text produced malformed JSON
+     * and the webhook answered 400. That went unnoticed because nothing the bot wrote had
+     * quotes in it until posts started citing their sources.
+     *
+     * [correctMessage] converts real newlines into the two-character sequence \n so that
+     * the old concatenation came out valid, so we turn those back into newlines here and
+     * let the encoder do the escaping.
+     */
+    protected fun jsonBody(vararg fields: Pair<String, String>): String {
+        val json = JSONObject()
+        fields.forEach { (key, value) -> json.put(key, value.replace("\\n", "\n")) }
+        return json.toString()
+    }
+
+    override fun createMessage(messageInfo: Pair<String, String>, title: Boolean): Int? {
+        return try {
             // TODO: Remove this sleep
             val message = generateMessage(messageInfo, title)
             Thread.sleep(1000)
             if (message.length > maxMessageLength) {
                 val subMessage = message.substring(0, maxMessageLength + 1)
                 sendMessage(correctMessage(subMessage))
-                createMessage(
+                // Returning here matters: without it the whole message was sent a second
+                // time after the split, so anything over the limit posted twice.
+                return createMessage(
                     Pair(messageInfo.first, message.substring(maxMessageLength + 1)),
                     false
                 )
@@ -63,6 +85,7 @@ abstract class MessagingService(protected val url: String) : IMessagingService {
             sendMessage(correctMessage(message))
         } catch (e: Exception) {
             println(e.message)
+            null
         }
     }
 
