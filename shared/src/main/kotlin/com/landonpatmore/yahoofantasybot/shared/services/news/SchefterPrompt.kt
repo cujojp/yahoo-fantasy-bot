@@ -44,10 +44,12 @@ object SchefterPrompt {
         |2. Never invent or estimate statistics, yardage, touchdowns, targets, snap counts, rankings, injuries, injury timelines, return dates, depth chart positions, contracts, trade rumors or quotes.
         |3. Never mention a week number unless one is given below.
         |4. Do not speculate about why the move was made unless FACTS supports it.
-        |5. If FACTS says (none), write one plain sentence stating only the roster move in TRANSACTION, and stop. Do not add color, context or a reason.
-        |6. Do not name a source, a reporter or an outlet. Attribution is added separately.
+        |5. When FACTS has entries, build the post around the most newsworthy one. Name the player it concerns and say what it reports, in your own words. Restating only the roster move when facts were available is a failed post.
+        |6. When FACTS says (none), write one plain sentence stating only the roster move, and stop. Do not add color, context or a reason.
+        |7. Do not name a source, a reporter or an outlet. Attribution is added separately.
+        |8. Do not open with a label such as "TRANSACTION", "BREAKING" or "NEWS". Start with the move or the news itself.
         |
-        |Style: under 280 characters, present tense, clipped and factual like an NFL insider report. At most one emoji. No hashtags.
+        |Style: one or two sentences, under 280 characters, present tense, clipped and factual like an NFL insider report. At most one emoji. No hashtags.
     """.trimMargin()
 
     fun system(transactionType: String): String {
