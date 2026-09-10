@@ -26,6 +26,8 @@ package com.landonpatmore.yahoofantasybot.bot.messaging
 
 import com.mashape.unirest.http.Unirest
 import com.mashape.unirest.request.body.RequestBodyEntity
+import com.landonpatmore.yahoofantasybot.shared.database.models.MessagingService as ServiceType
+import com.landonpatmore.yahoofantasybot.shared.messaging.AlertFormatting
 
 class Discord(url: String) : MessagingService(url) {
     override val name = "Discord"
@@ -40,10 +42,7 @@ class Discord(url: String) : MessagingService(url) {
     override fun cleanMessage(message: String): String = message
 
     override fun generateMessage(message: Pair<String, String>, title: Boolean): String {
-        return if (title) {
-            "${message.first}\\n>>> ${message.second}"
-        } else {
-            ">>> ${message.second}"
-        }
+        val body = AlertFormatting.body(ServiceType.DISCORD, message.second)
+        return if (title) "${message.first}${AlertFormatting.NEW_LINE}$body" else body
     }
 }

@@ -25,7 +25,7 @@
 package com.landonpatmore.yahoofantasybot.bot.transformers
 
 import com.landonpatmore.yahoofantasybot.bot.messaging.Message
-import com.landonpatmore.yahoofantasybot.bot.utils.bold
+import com.landonpatmore.yahoofantasybot.shared.messaging.AlertFormatting
 import io.reactivex.rxjava3.core.Observable
 
 fun Observable<Message>.convertToMessageInfo(): Observable<Pair<String, String>> =
@@ -42,9 +42,7 @@ fun Observable<Message>.convertToMessageInfo(): Observable<Pair<String, String>>
         it.second.isNotEmpty()
     }
 
-private fun createTitle(title: String): String {
-    return "\uD83D\uDCE3 ${("$title Alert").toUpperCase().bold()}\\n━━━━━━━━━"
-}
+private fun createTitle(title: String): String = AlertFormatting.title(title)
 
 private fun createMessage(alertTitle: String, message: String): Pair<String, String> {
     return Pair(alertTitle, message)

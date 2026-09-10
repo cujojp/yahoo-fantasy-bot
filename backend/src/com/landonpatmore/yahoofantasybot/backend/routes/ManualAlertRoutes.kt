@@ -30,6 +30,7 @@ import com.landonpatmore.yahoofantasybot.backend.utils.DataRetriever
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessageHistory
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessagingService
+import com.landonpatmore.yahoofantasybot.shared.messaging.AlertFormatting
 import com.mashape.unirest.http.Unirest
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -74,7 +75,7 @@ private fun Route.postManualMatchup(db: Db) {
             val messages = matchups.map { formatMatchupMessage(it) }
 
             // Send to all configured messaging services
-            val results = sendToMessagingServices(db, messages, "Matchup")
+            val results = sendToMessagingServices(db, messages, AlertFormatting.MATCH_UP)
 
             call.respond(HttpStatusCode.OK, mapOf(
                 "message" to "Matchup alert sent (${messages.size} matchups)",
@@ -111,7 +112,7 @@ private fun Route.postManualStandings(db: Db) {
             val messages = standings.map { formatStandingsMessage(it) }
 
             // Send to all configured messaging services
-            val results = sendToMessagingServices(db, messages, "Standings")
+            val results = sendToMessagingServices(db, messages, AlertFormatting.STANDINGS)
 
             call.respond(HttpStatusCode.OK, mapOf(
                 "message" to "Standings alert sent (${messages.size} teams)",
@@ -148,7 +149,7 @@ private fun Route.postManualScore(db: Db) {
             val messages = matchups.map { formatScoreMessage(it) }
 
             // Send to all configured messaging services
-            val results = sendToMessagingServices(db, messages, "Score")
+            val results = sendToMessagingServices(db, messages, AlertFormatting.SCORE)
 
             call.respond(HttpStatusCode.OK, mapOf(
                 "message" to "Score alert sent (${messages.size} matchups)",
@@ -197,7 +198,7 @@ private fun Route.postManualCloseScore(db: Db) {
             val messages = closeMatchups.map { formatScoreMessage(it) }
 
             // Send to all configured messaging services
-            val results = sendToMessagingServices(db, messages, "CloseScore")
+            val results = sendToMessagingServices(db, messages, AlertFormatting.CLOSE_SCORE)
 
             call.respond(HttpStatusCode.OK, mapOf(
                 "message" to "Close score alert sent (${messages.size} of ${matchups.size} matchups)",
@@ -341,7 +342,7 @@ private fun formatStandingsMessage(team: StandingTeam): String {
             if (team.clinchedPlayoffs) "\\n**Clinched Playoffs!**" else ""
 }
 
-private fun sendToMessagingServices(db: Db, messages: List<String>, alertType: String): Map<String, String> {
+private fun sendToMessagingServices(db: Db, messages: List<String>, alertName: String): Map<String, String> {
     val messagingServices = db.getMessagingServices()
     val results = mutableMapOf<String, String>()
 
@@ -359,7 +360,9 @@ private fun sendToMessagingServices(db: Db, messages: List<String>, alertType: S
         }
 
         // Each message is its own post, so one bad send does not hide the rest.
-        val failures = messages.mapNotNull { message -> sendMessage(db, service, serviceName, message) }
+        val failures = messages.mapNotNull { message ->
+            sendMessage(db, service, serviceName, AlertFormatting.render(service.service, alertName, message))
+        }
 
         results[serviceName] = if (failures.isEmpty()) {
             "Success (${messages.size} sent)"

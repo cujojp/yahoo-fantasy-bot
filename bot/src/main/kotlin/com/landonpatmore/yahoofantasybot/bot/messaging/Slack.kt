@@ -26,6 +26,8 @@ package com.landonpatmore.yahoofantasybot.bot.messaging
 
 import com.mashape.unirest.http.Unirest
 import com.mashape.unirest.request.body.RequestBodyEntity
+import com.landonpatmore.yahoofantasybot.shared.database.models.MessagingService as ServiceType
+import com.landonpatmore.yahoofantasybot.shared.messaging.AlertFormatting
 
 class Slack(url: String) : MessagingService(url) {
     override val name = "Slack"
@@ -38,13 +40,10 @@ class Slack(url: String) : MessagingService(url) {
             .body("{\"text\" : \"$message\"}")
 
     override fun cleanMessage(message: String): String =
-        message.replace("**", "*")
+        AlertFormatting.applyMarkdown(ServiceType.SLACK, message)
 
     override fun generateMessage(message: Pair<String, String>, title: Boolean): String {
-        return if (title) {
-            "${message.first}\\n>>> ${message.second}"
-        } else {
-            ">>> ${message.second}"
-        }
+        val body = AlertFormatting.body(ServiceType.SLACK, message.second)
+        return if (title) "${message.first}${AlertFormatting.NEW_LINE}$body" else body
     }
 }
