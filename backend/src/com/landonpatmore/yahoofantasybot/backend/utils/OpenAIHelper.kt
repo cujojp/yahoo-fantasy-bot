@@ -24,172 +24,136 @@
 
 package com.landonpatmore.yahoofantasybot.backend.utils
 
+import com.landonpatmore.yahoofantasybot.shared.services.PlayerInfo
+import com.landonpatmore.yahoofantasybot.shared.services.news.NewsBrief
+import com.landonpatmore.yahoofantasybot.shared.services.news.PlayerNewsService
+import com.landonpatmore.yahoofantasybot.shared.services.news.SchefterPrompt
+import com.landonpatmore.yahoofantasybot.shared.services.news.TweetFactChecker
+import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 import com.mashape.unirest.http.Unirest
 import org.json.JSONArray
 import org.json.JSONObject
-import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
-import com.landonpatmore.yahoofantasybot.shared.services.PlayerInfo
-import com.landonpatmore.yahoofantasybot.shared.services.YahooNewsService
 
+/**
+ * The manual test-message path from the web UI.
+ *
+ * This deliberately builds its prompt and runs its fact check through the same shared
+ * [SchefterPrompt] and [TweetFactChecker] the bot uses. Previously the two paths had
+ * different rules, and the stricter set lived here, on the path that never posts to
+ * Discord. Testing a message now exercises what production will actually do.
+ */
 object OpenAIHelper {
     private const val OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
-    private const val MODEL = "gpt-4"
+    private val MODEL = System.getenv("OPENAI_MODEL")?.takeIf { it.isNotBlank() } ?: "gpt-4o"
     private const val MAX_TOKENS = 280
-    private const val TEMPERATURE = 0.8
-    
-    fun generateTestMessageSchefterTweet(originalMessage: String, yahooNewsService: YahooNewsService? = null): String? {
+    private const val TEMPERATURE = 0.4
+
+    fun generateTestMessageSchefterTweet(
+        originalMessage: String,
+        playerNewsService: PlayerNewsService? = null
+    ): String? {
         val apiKey = EnvVariable.Str.OpenAIApiKey.variable
-        println("OpenAI API Key check: ${if (apiKey.isNotEmpty()) "Present (length: ${apiKey.length})" else "Not set"}")
-        
         if (apiKey.isEmpty()) {
-            println("OpenAI API key not configured - skipping Schefter tweet generation")
+            println("OpenAIHelper: OpenAI API key not configured, skipping tweet generation")
             return null
         }
-        
+
         return try {
-            // Check if the test message contains transaction-like content
-            val isTransactionTest = originalMessage.contains("added", ignoreCase = true) || 
-                                  originalMessage.contains("dropped", ignoreCase = true) || 
-                                  originalMessage.contains("traded", ignoreCase = true)
-            
-            val systemPrompt = if (isTransactionTest) {
-                """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about this fantasy football transaction.
-                    |Keep it under 280 characters. Use insider language and create urgency/excitement.
-                    |Use only ONE emoji maximum, preferably 🚨 for breaking news or 🏈 for football context, or none at all. Make it sound like breaking news.
-                    |Focus on the fantasy impact and player value. This is a test of the transaction alert system.
-                    |CRITICAL: Do NOT make up any specific performance data, statistics, or game results unless explicitly provided in the context.
-                    |If no recent news or context is provided about a player, focus on the transaction itself without inventing reasons or performance data.""".trimMargin()
-            } else {
-                """You are Adam Schefter, the renowned NFL insider. Write a brief, punchy tweet about a fantasy football bot test message.
-                    |Keep it under 280 characters. Use insider language and create urgency/excitement.
-                    |Use only ONE emoji maximum, preferably 🚨 for breaking news or 🤖 for bot context, or none at all. Make it sound like breaking news about the bot being operational.
-                    |Focus on the technology and reliability aspect.""".trimMargin()
+            val players = extractPlayersFromMessage(originalMessage)
+            val isTransactionTest = players.isNotEmpty() && looksLikeTransaction(originalMessage)
+
+            // A bot smoke test is not a transaction and has no facts behind it, so it gets
+            // a fixed line rather than an invitation to invent breaking news.
+            if (!isTransactionTest) {
+                println("OpenAIHelper: message is not a transaction, skipping tweet generation")
+                return null
             }
-            
-            val userPrompt = if (isTransactionTest) {
-                "Fantasy Transaction: $originalMessage"
-            } else {
-                "Test Message: $originalMessage"
+
+            val brief = playerNewsService?.brief(players) ?: NewsBrief(emptyList())
+            val systemPrompt = SchefterPrompt.system("TEST")
+            val userPrompt = SchefterPrompt.user("TEST", originalMessage, brief)
+
+            println("OpenAIHelper: generating test post with ${brief.facts.size} sourced fact(s)")
+
+            val tweet = callOpenAI(apiKey, systemPrompt, userPrompt) ?: return null
+
+            val problems = TweetFactChecker.findUnsupportedClaims(
+                tweet,
+                SchefterPrompt.evidence(originalMessage, brief)
+            )
+            if (problems.isNotEmpty()) {
+                println("OpenAIHelper: dropping test post, unsupported claims: ${problems.joinToString("; ")}")
+                return null
             }
-            
-            // For transaction tests, try to add some context
-            val enhancedUserPrompt = if (isTransactionTest) {
-                buildString {
-                    append(userPrompt)
-                    
-                    // Extract players and get news context if available
-                    val players = extractPlayersFromMessage(originalMessage)
-                    
-                    if (players.isNotEmpty()) {
-                        append("\nPlayers involved: ${players.map { it.name }.joinToString(", ")}")
-                        
-                        // Add Yahoo news context if available
-                        if (yahooNewsService != null) {
-                            println("OpenAIHelper: Yahoo News Service available, fetching news context...")
-                            val newsContext = yahooNewsService.generateNewsContext(players)
-                            if (newsContext.isNotEmpty()) {
-                                append("\n$newsContext")
-                                println("OpenAIHelper: Added news context: $newsContext")
-                            }
-                        } else {
-                            println("OpenAIHelper: No Yahoo News Service available for test message")
-                        }
-                    }
-                }
-            } else {
-                userPrompt
-            }
-            
-            val requestBody = JSONObject().apply {
-                put("model", MODEL)
-                put("messages", JSONArray().apply {
-                    put(JSONObject().apply {
-                        put("role", "system")
-                        put("content", systemPrompt)
-                    })
-                    put(JSONObject().apply {
-                        put("role", "user")
-                        put("content", enhancedUserPrompt)
-                    })
-                })
-                put("max_tokens", MAX_TOKENS)
-                put("temperature", TEMPERATURE)
-            }
-            
-            val response = Unirest.post(OPENAI_API_URL)
-                .header("Authorization", "Bearer $apiKey")
-                .header("Content-Type", "application/json")
-                .body(requestBody)
-                .asJson()
-            
-            println("OpenAI API Response Status: ${response.status}")
-            
-            if (response.status == 200) {
-                val generatedTweet = response.body.`object`
-                    .getJSONArray("choices")
-                    .getJSONObject(0)
-                    .getJSONObject("message")
-                    .getString("content")
-                    .trim()
-                println("Generated Schefter tweet: $generatedTweet")
-                generatedTweet
-            } else {
-                println("OpenAI API error response: ${response.body}")
-                null
-            }
+
+            val attribution = brief.attribution()
+            if (attribution == null) tweet else "$tweet\n_${attribution}_"
         } catch (e: Exception) {
-            println("OpenAI error: ${e.message}")
+            println("OpenAIHelper: error: ${e.message}")
             e.printStackTrace()
             null
         }
     }
-    
+
+    private fun looksLikeTransaction(message: String): Boolean =
+        listOf("added", "dropped", "traded").any { message.contains(it, ignoreCase = true) }
+
+    private fun callOpenAI(apiKey: String, systemPrompt: String, userPrompt: String): String? {
+        val requestBody = JSONObject().apply {
+            put("model", MODEL)
+            put("messages", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("role", "system")
+                    put("content", systemPrompt)
+                })
+                put(JSONObject().apply {
+                    put("role", "user")
+                    put("content", userPrompt)
+                })
+            })
+            put("max_tokens", MAX_TOKENS)
+            put("temperature", TEMPERATURE)
+        }
+
+        val response = Unirest.post(OPENAI_API_URL)
+            .header("Authorization", "Bearer $apiKey")
+            .header("Content-Type", "application/json")
+            .body(requestBody)
+            .asJson()
+
+        if (response.status != 200) {
+            println("OpenAIHelper: OpenAI API error ${response.status}: ${response.body}")
+            return null
+        }
+
+        return response.body.`object`
+            .getJSONArray("choices")
+            .getJSONObject(0)
+            .getJSONObject("message")
+            .getString("content")
+            .trim()
+    }
+
     /**
-     * Extracts players from a transaction message for enhanced context
+     * Pulls players out of a free-text test message so the news lookup has something to
+     * work with. Only the `Name (TEAM, POS)` form is accepted. The old loose fallback
+     * matched any two capitalised words, which fed fantasy team names to the news lookup
+     * as if they were players.
      */
     private fun extractPlayersFromMessage(message: String): List<PlayerInfo> {
-        val players = mutableListOf<PlayerInfo>()
-        
-        // Simple regex patterns to extract names from common formats
-        // "Player Name (TEAM, POS)" format - updated to handle apostrophes
-        val playerPattern = Regex("""([A-Z][a-z']+ [A-Z][a-z']+(?:\s[A-Z][a-z']+)*)\s*\(([A-Z]{2,4}),\s*([A-Z]+)\)""")
-        val matches = playerPattern.findAll(message)
-        
-        matches.forEach { match ->
-            val playerName = match.groupValues[1].trim()
-            val team = match.groupValues[2].trim()
-            val position = match.groupValues[3].trim()
-            
-            if (playerName.isNotEmpty() && !players.any { it.name == playerName }) {
-                players.add(PlayerInfo(
-                    name = playerName,
-                    nflTeam = team,
-                    position = position,
-                    playerId = null,
-                    playerKey = null
-                ))
+        val playerPattern =
+            Regex("""([A-Z][a-z']+ [A-Z][a-z']+(?:\s[A-Z][a-z']+)*)\s*\(([A-Za-z]{2,4}),\s*([A-Z]+)\)""")
+
+        return playerPattern.findAll(message)
+            .map { match ->
+                PlayerInfo(
+                    name = match.groupValues[1].trim(),
+                    nflTeam = match.groupValues[2].trim(),
+                    position = match.groupValues[3].trim()
+                )
             }
-        }
-        
-        // Fallback: look for capitalized names (less reliable)
-        if (players.isEmpty()) {
-            val namePattern = Regex("""([A-Z][a-z']+\s+[A-Z][a-z']+)""")
-            val nameMatches = namePattern.findAll(message)
-            nameMatches.take(3).forEach { match ->
-                val name = match.groupValues[1]
-                // Filter out common non-player words
-                if (!name.matches(Regex("(added|dropped|traded|received|Team|Name|League).*", RegexOption.IGNORE_CASE))) {
-                    players.add(PlayerInfo(
-                        name = name,
-                        nflTeam = "Unknown",
-                        position = "Unknown",
-                        playerId = null,
-                        playerKey = null
-                    ))
-                }
-            }
-        }
-        
-        return players.take(3) // Limit to 3 players for context
+            .distinctBy { it.name }
+            .take(4)
+            .toList()
     }
 }

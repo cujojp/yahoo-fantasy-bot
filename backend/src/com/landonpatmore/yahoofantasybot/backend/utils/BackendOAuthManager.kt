@@ -30,6 +30,7 @@ import com.github.scribejava.core.model.OAuth2AccessToken
 import com.github.scribejava.core.model.OAuthConstants
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.services.YahooNewsService
+import com.landonpatmore.yahoofantasybot.shared.services.news.PlayerNewsService
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 
 /**
@@ -44,6 +45,13 @@ class BackendOAuthManager(private val database: Db) {
     
     private var cachedToken: Pair<Long, OAuth2AccessToken>? = null
     
+    /**
+     * The full news stack for the manual test route. Built even when Yahoo has no usable
+     * token, because ESPN and Sleeper need no auth and still ground the message.
+     */
+    fun createPlayerNewsService(): PlayerNewsService =
+        PlayerNewsService(createYahooNewsService())
+
     /**
      * Creates a YahooNewsService instance if OAuth tokens are available
      */
