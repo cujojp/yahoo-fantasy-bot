@@ -30,6 +30,7 @@ import io.reactivex.rxjava3.observers.TestObserver
 import io.reactivex.rxjava3.schedulers.TestScheduler
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.parser.Parser
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -49,7 +50,7 @@ class MatchUpDataTransformerKtTest {
         testScheduler = TestScheduler()
         testPublishSubject = PublishRelay.create()
 
-        faabDocument = Jsoup.parse(
+        faabDocument = leagueDocument(
             "<matchup>\n" +
                     "\t<week> 16 </week>\n" +
                     "\t<week_start> 2018-12-18 </week_start>\n" +
@@ -160,7 +161,7 @@ class MatchUpDataTransformerKtTest {
                     "</matchup>"
         )
 
-        nonFaabDocument = Jsoup.parse(
+        nonFaabDocument = leagueDocument(
             "<matchup>\n" +
                     "\t<week> 16 </week>\n" +
                     "\t<week_start> 2018-12-18 </week_start>\n" +
@@ -270,6 +271,22 @@ class MatchUpDataTransformerKtTest {
         )
     }
 
+    /**
+     * Wraps a bare matchup in the league envelope Yahoo actually returns.
+     *
+     * The transformer walks `league > teams > team > matchups > matchup` so it can send
+     * every matchup in a week, not just one. These fixtures predate that and were a bare
+     * `<matchup>`, which the transformer correctly finds nothing in. Parsed as XML to
+     * match production, where an HTML parse of Yahoo's feed has caused real bugs.
+     */
+    private fun leagueDocument(matchupXml: String): Document = Jsoup.parse(
+        "<fantasy_content><league><current_week>16</current_week><teams><team>" +
+                "<team_id>1</team_id><matchups>" + matchupXml +
+                "</matchups></team></teams></league></fantasy_content>",
+        "",
+        Parser.xmlParser()
+    )
+
     @AfterEach
     fun tearDown() {
         testScheduler.shutdown()
@@ -321,8 +338,8 @@ class MatchUpDataTransformerKtTest {
         testObserver.assertValueCount(1)
         testObserver.assertValue { it is Message.Score }
         testObserver.assertValue {
-            it.message == "TEST TEAM 1 \uD83C\uDD9A TEST TEAM 2\\n" +
-                    "129.86 (138.11) - 208.52 (131.0)"
+            it.message == "**TEST TEAM 1** vs. **TEST TEAM 2**\\n" +
+                    "**129.86** (138.11) - **208.52** (131.0)"
         }
     }
 }
