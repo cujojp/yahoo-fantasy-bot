@@ -95,13 +95,13 @@ private fun Route.postTestMessage(db: Db) {
             TestMessageRequest()
         }
         
-        // Create YahooNewsService if OAuth is available
+        // Gather real player news before generating anything
         val oauthManager = BackendOAuthManager(db)
-        val yahooNewsService = oauthManager.createYahooNewsService()
+        val playerNewsService = oauthManager.createPlayerNewsService()
         
         // Generate Schefter-style tweet if OpenAI is configured
         println("Attempting to generate Schefter tweet for message: ${request.message}")
-        val schefterTweet = OpenAIHelper.generateTestMessageSchefterTweet(request.message, yahooNewsService)
+        val schefterTweet = OpenAIHelper.generateTestMessageSchefterTweet(request.message, playerNewsService)
         println("Schefter tweet result: ${if (schefterTweet != null) "Generated successfully" else "Not generated"}")
         
         val fullMessage = if (schefterTweet != null) {

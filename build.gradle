@@ -31,6 +31,17 @@ allprojects {
         implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion"
         implementation "com.github.scribejava:scribejava-apis:$scribeJavaVersion"
         testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
+        // Without the engine and useJUnitPlatform below, `gradle test` reported success
+        // while running zero tests.
+        testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+        testLogging {
+            events "failed"
+            exceptionFormat "full"
+        }
     }
 
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {

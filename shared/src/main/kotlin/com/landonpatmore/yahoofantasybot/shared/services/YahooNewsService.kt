@@ -28,273 +28,90 @@ import com.github.scribejava.core.model.OAuthRequest
 import com.github.scribejava.core.model.OAuth2AccessToken
 import com.github.scribejava.core.model.Verb
 import com.github.scribejava.core.oauth.OAuth20Service
+import com.landonpatmore.yahoofantasybot.shared.services.news.NewsFact
+import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.parser.Parser
-import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 import java.time.Duration
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 /**
- * Service for fetching Yahoo Sports news and player information
+ * The Yahoo half of player context: injury designations from the fantasy player resource,
+ * and the league's own current week.
+ *
+ * Yahoo carries a status and an injury note but no actual reporting, so this is a
+ * supporting source rather than the main one. See
+ * [com.landonpatmore.yahoofantasybot.shared.services.news.PlayerNewsService] for how it is
+ * combined with ESPN and Sleeper.
  */
 class YahooNewsService(
     private val oauthService: OAuth20Service,
     private val accessToken: OAuth2AccessToken
 ) {
-    
+
     companion object {
         private const val YAHOO_SPORTS_API_BASE = "https://fantasysports.yahooapis.com/fantasy/v2"
-        private const val CACHE_DURATION_MINUTES = 15
+        private const val CACHE_DURATION_MINUTES = 15L
+        private const val SOURCE = "Yahoo"
     }
-    
-    private val newsCache = mutableMapOf<String, Pair<String, LocalDateTime>>()
+
+    private val newsCache = mutableMapOf<String, Pair<NewsFact?, LocalDateTime>>()
     private var gameKeyCache: String? = null
     private var weekCache: Pair<Int, LocalDateTime>? = null
-    
+
     /**
-     * Fetches recent news context for a list of players
+     * Yahoo's injury designation for a player, or null when Yahoo has nothing. Null is the
+     * common case for a healthy player and is a fine answer: we would rather send no fact
+     * than a filler one.
      */
-    fun getRecentNewsForPlayers(players: List<PlayerInfo>): String {
-        println("YahooNewsService: Fetching news for ${players.size} players")
-        if (players.isEmpty()) {
-            println("YahooNewsService: No players provided, returning empty news")
-            return ""
-        }
-        
-        val newsItems = mutableListOf<String>()
-        val maxNewsItems = 3 // Limit to avoid token bloat
-        
-        players.take(maxNewsItems).forEach { player ->
-            println("YahooNewsService: Fetching news for ${player.name} (${player.nflTeam}, ${player.position})")
-            val news = getPlayerNews(player.name, player.nflTeam, player.playerId)
-            if (news.isNotEmpty()) {
-                println("YahooNewsService: Found news for ${player.name}: $news")
-                newsItems.add("${player.name}: $news")
-            } else {
-                println("YahooNewsService: No news found for ${player.name}")
+    fun playerFact(player: PlayerInfo): NewsFact? {
+        val playerId = player.playerId ?: return null
+        val cacheKey = "${player.name}_${player.nflTeam}"
+
+        newsCache[cacheKey]?.let { (cached, fetchedAt) ->
+            if (Duration.between(fetchedAt, LocalDateTime.now()).toMinutes() < CACHE_DURATION_MINUTES) {
+                return cached
             }
         }
-        
-        val result = if (newsItems.isNotEmpty()) {
-            "Recent NFL News: ${newsItems.joinToString(" | ")}"
-        } else {
-            ""
-        }
-        
-        println("YahooNewsService: Final news context: '$result'")
-        return result
+
+        val fact = fetchPlayerFact(player.name, playerId)
+        newsCache[cacheKey] = Pair(fact, LocalDateTime.now())
+        return fact
     }
-    
-    /**
-     * Gets news for a specific player, with caching
-     */
-    private fun getPlayerNews(playerName: String, nflTeam: String, playerId: String?): String {
-        val cacheKey = "${playerName}_${nflTeam}"
-        println("YahooNewsService: Looking up news for cache key: $cacheKey")
-        
-        // Check cache first
-        newsCache[cacheKey]?.let { (cachedNews, timestamp) ->
-            if (timestamp.isAfter(LocalDateTime.now().minusMinutes(CACHE_DURATION_MINUTES.toLong()))) {
-                println("YahooNewsService: Using cached news for $playerName: '$cachedNews'")
-                return cachedNews
-            } else {
-                println("YahooNewsService: Cache expired for $playerName, fetching fresh news")
-            }
-        }
-        
-        println("YahooNewsService: No cache found for $playerName, fetching from Yahoo API")
-        val news = fetchPlayerNewsFromYahoo(playerName, nflTeam, playerId)
-        
-        // Cache the result
-        newsCache[cacheKey] = Pair(news, LocalDateTime.now())
-        println("YahooNewsService: Cached news result for $playerName: '$news'")
-        
-        return news
-    }
-    
-    /**
-     * Fetches player news from Yahoo Sports API or searches Yahoo Sports
-     */
-    private fun fetchPlayerNewsFromYahoo(playerName: String, nflTeam: String, playerId: String?): String {
-        println("YahooNewsService: Attempting to fetch news from Yahoo for $playerName (playerId: $playerId)")
+
+    private fun fetchPlayerFact(playerName: String, playerId: String): NewsFact? {
         return try {
-            // Try specific player endpoint if we have player_id
-            val result = playerId?.let { id ->
-                println("YahooNewsService: Trying specific player news endpoint for ID: $id")
-                fetchSpecificPlayerNews(id)
-            } ?: run {
-                println("YahooNewsService: No player ID, falling back to team news approach")
-                // Fallback to team news or general approach
-                fetchTeamNews(nflTeam, playerName)
-            }
-            println("YahooNewsService: Yahoo API fetch result for $playerName: '$result'")
-            result
-        } catch (e: Exception) {
-            println("YahooNewsService: Error fetching news for $playerName: ${e.message}")
-            e.printStackTrace()
-            ""
-        }
-    }
-    
-    /**
-     * Fetches news for a specific player using their Yahoo player ID
-     */
-    private fun fetchSpecificPlayerNews(playerId: String): String {
-        return try {
-            // Try Yahoo API endpoint for player data
-            val gameKey = gameKey() ?: return ""
-            val playerKey = "$gameKey.p.$playerId"
-            val url = "https://fantasysports.yahooapis.com/fantasy/v2/player/$playerKey"
-            
-            val doc = makeYahooApiRequest(url)
-            
-            // Extract real player data: injury status, notes, etc.
+            val gameKey = gameKey() ?: return null
+            val doc = makeYahooApiRequest("$YAHOO_SPORTS_API_BASE/player/$gameKey.p.$playerId")
+
             val injuryNote = doc.select("injury_note").text()
             val status = doc.select("status").text()
-            val statusFull = doc.select("status_full").text()
-            val hasNotes = doc.select("has_player_notes").text() == "1"
-            
-            val updates = mutableListOf<String>()
-            
-            // Add injury information if available
-            if (injuryNote.isNotEmpty()) {
-                updates.add("Injury: $injuryNote")
-            }
-            
-            // Add status if not healthy
-            if (status.isNotEmpty() && status != "NA") {
-                updates.add("Status: $statusFull")
-            }
-            
-            // Note if player has updates available
-            if (hasNotes) {
-                updates.add("Recent updates available")
-            }
-            
-            updates.joinToString(". ")
-        } catch (e: Exception) {
-            println("Player-specific news fetch failed: ${e.message}")
-            ""
-        }
-    }
-    
-    /**
-     * Fetches team-related news that might mention the player
-     */
-    private fun fetchTeamNews(nflTeam: String, playerName: String): String {
-        return try {
-            // Use Yahoo Sports team news approach
-            val teamNews = getTeamRelatedNews(nflTeam)
-            
-            // Filter for mentions of the specific player
-            filterNewsForPlayer(teamNews, playerName)
-        } catch (e: Exception) {
-            println("Team news fetch failed: ${e.message}")
-            ""
-        }
-    }
-    
-    /**
-     * Makes authenticated request to Yahoo API
-     */
-    private fun makeYahooApiRequest(url: String): Document {
-        val request = OAuthRequest(Verb.GET, url)
-        oauthService.signRequest(accessToken, request)
-        val response = oauthService.execute(request)
-        return Jsoup.parse(response.body, "", Parser.xmlParser())
-    }
-    
-    /**
-     * Parses news content from Yahoo API response
-     */
-    private fun parseNewsFromResponse(doc: Document): String {
-        return try {
-            // Look for common news fields in Yahoo responses
-            val newsItems = doc.select("news, headline, summary, description")
-            
-            newsItems.take(2).joinToString(" ") { element: org.jsoup.nodes.Element ->
-                element.text().take(100) // Limit length
-            }.trim()
-        } catch (e: Exception) {
-            ""
-        }
-    }
-    
-    /**
-     * Gets team-related news
-     */
-    @Suppress("UNUSED_PARAMETER")
-    private fun getTeamRelatedNews(nflTeam: String): String {
-        // This could be enhanced to use Yahoo's team news endpoints
-        // For now, return empty to avoid API errors
-        return ""
-    }
-    
-    /**
-     * Filters team news for player mentions
-     */
-    private fun filterNewsForPlayer(teamNews: String, playerName: String): String {
-        val lastName = playerName.substringAfterLast(" ")
-        return if (teamNews.contains(lastName, ignoreCase = true)) {
-            teamNews.take(150) // Limit length
-        } else {
-            ""
-        }
-    }
-    
-    /**
-     * Generates a contextual news summary for OpenAI
-     */
-    fun generateNewsContext(players: List<PlayerInfo>): String {
-        println("YahooNewsService: Generating news context for OpenAI with ${players.size} players")
-        val news = getRecentNewsForPlayers(players)
-        
-        val result = if (news.isNotEmpty()) {
-            println("YahooNewsService: Using news context: $news")
-            "Context: $news"
-        } else {
-            // Fallback to current week/season context
-            val currentWeek = getCurrentNFLWeek()
-            val fallback = if (currentWeek != null) {
-                "Context: Week $currentWeek of the NFL season"
-            } else {
-                "Context: NFL season"
-            }
-            println("YahooNewsService: No news found, using fallback context: $fallback")
-            fallback
-        }
-        
-        println("YahooNewsService: Final context for OpenAI: '$result'")
-        return result
-    }
-    
-    /**
-     * Resolves the current season's game key from Yahoo instead of hardcoding it,
-     * so player lookups keep working when the season rolls over.
-     */
-    private fun gameKey(): String? {
-        gameKeyCache?.let { return it }
+            val statusFull = doc.select("status_full").text().ifBlank { status }
 
-        return try {
-            makeYahooApiRequest("$YAHOO_SPORTS_API_BASE/game/nfl")
-                .select("game_key").first()?.text()
-                ?.takeIf { it.isNotEmpty() }
-                ?.also { gameKeyCache = it }
+            val parts = mutableListOf<String>()
+            if (status.isNotEmpty() && status != "NA") {
+                parts.add("Listed $statusFull")
+            }
+            if (injuryNote.isNotEmpty()) {
+                parts.add(injuryNote)
+            }
+
+            // Yahoo also exposes has_player_notes, but not the notes themselves. Saying
+            // "updates available" told the model nothing and invited it to fill the gap.
+            if (parts.isEmpty()) null
+            else NewsFact(playerName, parts.joinToString(" - "), SOURCE, null)
         } catch (e: Exception) {
-            println("YahooNewsService: could not resolve game key: ${e.message}")
+            println("YahooNewsService: news fetch failed for $playerName: ${e.message}")
             null
         }
     }
 
     /**
-     * Current NFL week straight from Yahoo's league metadata. Yahoo is the source of
-     * truth, so this stays right across seasons and reads 1 during the preseason.
-     * Returns null when it cannot be determined, so callers can leave the week out
-     * rather than guess at it.
+     * Current NFL week straight from Yahoo's league metadata. Returns null when it cannot
+     * be determined, so callers leave the week out rather than guess at it.
      */
-    private fun getCurrentNFLWeek(): Int? {
+    fun currentWeek(): Int? {
         weekCache?.let { (week, fetchedAt) ->
             if (Duration.between(fetchedAt, LocalDateTime.now()).toMinutes() < CACHE_DURATION_MINUTES) {
                 return week
@@ -313,6 +130,31 @@ class YahooNewsService(
             println("YahooNewsService: could not resolve current week: ${e.message}")
             null
         }
+    }
+
+    /**
+     * Resolves the current season's game key from Yahoo instead of hardcoding it, so
+     * player lookups keep working when the season rolls over.
+     */
+    private fun gameKey(): String? {
+        gameKeyCache?.let { return it }
+
+        return try {
+            makeYahooApiRequest("$YAHOO_SPORTS_API_BASE/game/nfl")
+                .select("game_key").first()?.text()
+                ?.takeIf { it.isNotEmpty() }
+                ?.also { gameKeyCache = it }
+        } catch (e: Exception) {
+            println("YahooNewsService: could not resolve game key: ${e.message}")
+            null
+        }
+    }
+
+    private fun makeYahooApiRequest(url: String): Document {
+        val request = OAuthRequest(Verb.GET, url)
+        oauthService.signRequest(accessToken, request)
+        val response = oauthService.execute(request)
+        return Jsoup.parse(response.body, "", Parser.xmlParser())
     }
 }
 

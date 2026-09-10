@@ -35,6 +35,7 @@ import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessageHistory
 import com.landonpatmore.yahoofantasybot.shared.services.YahooNewsService
+import com.landonpatmore.yahoofantasybot.shared.services.news.PlayerNewsService
 import com.github.scribejava.apis.YahooApi20
 import com.github.scribejava.core.oauth.OAuth20Service
 import org.koin.dsl.module
@@ -68,7 +69,9 @@ val messagingModule = module {
                 null
             }
             
-            OpenAIService(apiKey, yahooNewsService)
+            // PlayerNewsService is built even when Yahoo is unavailable: ESPN and Sleeper
+            // need no auth, so a Yahoo 403 costs us one source rather than all of them.
+            OpenAIService(apiKey, PlayerNewsService(yahooNewsService))
         } else {
             null
         }

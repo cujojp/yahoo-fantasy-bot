@@ -110,9 +110,9 @@ private fun addMessage(event: Element, openAIService: OpenAIService?): Observabl
         val transactionDetails = "$fantasyTeam added ${playerDetailsList.joinToString(", ")}"
         println("TransactionDataTransformer: Calling OpenAI for ADD transaction with ${playerInfoList.size} players")
         println("TransactionDataTransformer: Transaction details: $transactionDetails")
-        openAIService.generateSchefterTweetWithPlayers("ADD", transactionDetails, playerInfoList)
-            .map { tweet ->
-                Message.Transaction.Add(baseMessage, tweet)
+        openAIService.generatePost("ADD", transactionDetails, playerInfoList)
+            .map { post ->
+                Message.Transaction.Add(baseMessage, post.withAttribution())
             }
             .onErrorReturn {
                 Message.Transaction.Add(baseMessage)
@@ -159,9 +159,9 @@ private fun dropMessage(event: Element, openAIService: OpenAIService?): Observab
         val transactionDetails = "$fantasyTeam dropped ${playerDetailsList.joinToString(", ")}"
         println("TransactionDataTransformer: Calling OpenAI for DROP transaction with ${playerInfoList.size} players")
         println("TransactionDataTransformer: Transaction details: $transactionDetails")
-        openAIService.generateSchefterTweetWithPlayers("DROP", transactionDetails, playerInfoList)
-            .map { tweet ->
-                Message.Transaction.Drop(baseMessage, tweet)
+        openAIService.generatePost("DROP", transactionDetails, playerInfoList)
+            .map { post ->
+                Message.Transaction.Drop(baseMessage, post.withAttribution())
             }
             .onErrorReturn {
                 Message.Transaction.Drop(baseMessage)
@@ -229,9 +229,9 @@ private fun addDropMessage(event: Element, openAIService: OpenAIService?): Obser
         val allPlayerInfoList = addedPlayerInfoList + droppedPlayerInfoList
         println("TransactionDataTransformer: Calling OpenAI for ADD/DROP transaction with ${allPlayerInfoList.size} players")
         println("TransactionDataTransformer: Transaction details: $transactionDetails")
-        openAIService.generateSchefterTweetWithPlayers("ADD/DROP", transactionDetails, allPlayerInfoList)
-            .map { tweet ->
-                Message.Transaction.AddDrop(baseMessage, tweet)
+        openAIService.generatePost("ADD/DROP", transactionDetails, allPlayerInfoList)
+            .map { post ->
+                Message.Transaction.AddDrop(baseMessage, post.withAttribution())
             }
             .onErrorReturn {
                 Message.Transaction.AddDrop(baseMessage)
@@ -296,9 +296,9 @@ private fun tradeMessage(event: Element, openAIService: OpenAIService?): Observa
         val allTradePlayerInfo = traderPlayerInfoList + tradeePlayerInfoList
         println("TransactionDataTransformer: Calling OpenAI for TRADE transaction with ${allTradePlayerInfo.size} players")
         println("TransactionDataTransformer: Transaction details: $transactionDetails")
-        openAIService.generateSchefterTweetWithPlayers("TRADE", transactionDetails, allTradePlayerInfo)
-            .map { tweet ->
-                Message.Transaction.Trade(baseMessage, tweet)
+        openAIService.generatePost("TRADE", transactionDetails, allTradePlayerInfo)
+            .map { post ->
+                Message.Transaction.Trade(baseMessage, post.withAttribution())
             }
             .onErrorReturn {
                 Message.Transaction.Trade(baseMessage)
@@ -315,9 +315,9 @@ private fun commissionerMessage(openAIService: OpenAIService?): Observable<Messa
     
     return if (openAIService != null) {
         val transactionDetails = "League commissioner has made administrative changes to fantasy league settings. The changes could affect scoring, rosters, waivers, or other league rules that impact all fantasy managers."
-        openAIService.generateSchefterTweetWithPlayers("COMMISH CHANGES", transactionDetails, emptyList())
-            .map { tweet ->
-                Message.Transaction.Commish(baseMessage, tweet)
+        openAIService.generatePost("COMMISH CHANGES", transactionDetails, emptyList())
+            .map { post ->
+                Message.Transaction.Commish(baseMessage, post.withAttribution())
             }
             .onErrorReturn {
                 Message.Transaction.Commish(baseMessage)
