@@ -29,6 +29,7 @@ import com.landonpatmore.yahoofantasybot.backend.utils.BackendOAuthManager
 import com.landonpatmore.yahoofantasybot.backend.utils.DataRetriever
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessageHistory
+import com.landonpatmore.yahoofantasybot.shared.database.models.MessagingService
 import com.mashape.unirest.http.Unirest
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -37,6 +38,7 @@ import io.ktor.server.routing.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
+import java.text.DecimalFormat
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 import kotlin.math.abs
@@ -54,29 +56,29 @@ private fun Route.postManualMatchup(db: Db) {
     post("/matchup") {
         try {
             println("[ManualAlert] Triggering manual matchup alert")
-            
+
             // Get team data from Yahoo API
             val oauthManager = BackendOAuthManager(db)
             val dataRetriever = DataRetriever(oauthManager)
             val teamsData = dataRetriever.yahooApiRequest(DataRetriever.YahooApiRequest.TeamsData)
-            
-            // Parse matchup data
-            val matchupData = parseMatchupData(teamsData)
-            
-            if (matchupData == null) {
+
+            // Parse every matchup in the current week
+            val matchups = parseMatchups(teamsData)
+
+            if (matchups.isEmpty()) {
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to parse matchup data"))
                 return@post
             }
-            
-            // Format message
-            val message = formatMatchupMessage(matchupData)
-            
+
+            // Format one message per matchup, the same as the scheduled alert
+            val messages = matchups.map { formatMatchupMessage(it) }
+
             // Send to all configured messaging services
-            val results = sendToMessagingServices(db, message, "Matchup")
-            
+            val results = sendToMessagingServices(db, messages, "Matchup")
+
             call.respond(HttpStatusCode.OK, mapOf(
-                "message" to "Matchup alert sent",
-                "data" to message,
+                "message" to "Matchup alert sent (${messages.size} matchups)",
+                "data" to messages,
                 "results" to results
             ))
         } catch (e: Exception) {
@@ -91,29 +93,29 @@ private fun Route.postManualStandings(db: Db) {
     post("/standings") {
         try {
             println("[ManualAlert] Triggering manual standings alert")
-            
+
             // Get standings data from Yahoo API
             val oauthManager = BackendOAuthManager(db)
             val dataRetriever = DataRetriever(oauthManager)
             val standingsData = dataRetriever.yahooApiRequest(DataRetriever.YahooApiRequest.Standings)
-            
+
             // Parse standings data
             val standings = parseStandingsData(standingsData)
-            
+
             if (standings.isEmpty()) {
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to parse standings data"))
                 return@post
             }
-            
-            // Format message
-            val message = formatStandingsMessage(standings)
-            
+
+            // One message per team, the same as the scheduled alert
+            val messages = standings.map { formatStandingsMessage(it) }
+
             // Send to all configured messaging services
-            val results = sendToMessagingServices(db, message, "Standings")
-            
+            val results = sendToMessagingServices(db, messages, "Standings")
+
             call.respond(HttpStatusCode.OK, mapOf(
-                "message" to "Standings alert sent",
-                "data" to message,
+                "message" to "Standings alert sent (${messages.size} teams)",
+                "data" to messages,
                 "results" to results
             ))
         } catch (e: Exception) {
@@ -128,29 +130,29 @@ private fun Route.postManualScore(db: Db) {
     post("/score") {
         try {
             println("[ManualAlert] Triggering manual score alert")
-            
+
             // Get team data from Yahoo API
             val oauthManager = BackendOAuthManager(db)
             val dataRetriever = DataRetriever(oauthManager)
             val teamsData = dataRetriever.yahooApiRequest(DataRetriever.YahooApiRequest.TeamsData)
-            
-            // Parse score data
-            val scoreData = parseScoreData(teamsData)
-            
-            if (scoreData == null) {
+
+            // Parse every matchup in the current week
+            val matchups = parseMatchups(teamsData)
+
+            if (matchups.isEmpty()) {
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to parse score data"))
                 return@post
             }
-            
-            // Format message
-            val message = formatScoreMessage(scoreData, false)
-            
+
+            // Format one message per matchup, the same as the scheduled alert
+            val messages = matchups.map { formatScoreMessage(it) }
+
             // Send to all configured messaging services
-            val results = sendToMessagingServices(db, message, "Score")
-            
+            val results = sendToMessagingServices(db, messages, "Score")
+
             call.respond(HttpStatusCode.OK, mapOf(
-                "message" to "Score alert sent",
-                "data" to message,
+                "message" to "Score alert sent (${messages.size} matchups)",
+                "data" to messages,
                 "results" to results
             ))
         } catch (e: Exception) {
@@ -165,40 +167,41 @@ private fun Route.postManualCloseScore(db: Db) {
     post("/closescore") {
         try {
             println("[ManualAlert] Triggering manual close score alert")
-            
+
             // Get team data from Yahoo API
             val oauthManager = BackendOAuthManager(db)
             val dataRetriever = DataRetriever(oauthManager)
             val teamsData = dataRetriever.yahooApiRequest(DataRetriever.YahooApiRequest.TeamsData)
-            
-            // Parse score data
-            val scoreData = parseScoreData(teamsData)
-            
-            if (scoreData == null) {
+
+            // Parse every matchup in the current week
+            val matchups = parseMatchups(teamsData)
+
+            if (matchups.isEmpty()) {
                 call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to parse score data"))
                 return@post
             }
-            
-            // Check if it's actually a close score
-            val winProbDiff = abs(scoreData.first.winProbability - scoreData.second.winProbability)
-            if (winProbDiff >= 40.0) {
+
+            // Keep only the matchups that are actually close
+            val closeMatchups = matchups.filter { isCloseScore(it) }
+
+            if (closeMatchups.isEmpty()) {
                 call.respond(HttpStatusCode.OK, mapOf(
-                    "message" to "Not a close score (win probability difference: $winProbDiff%)",
-                    "data" to formatScoreMessage(scoreData, true),
+                    "message" to "No close matchups this week (none within 40% win probability)",
+                    "data" to matchups.map { formatScoreMessage(it) },
                     "results" to emptyMap<String, String>()
                 ))
                 return@post
             }
-            
-            // Format message
-            val message = formatScoreMessage(scoreData, true)
-            
+
+            // Format one message per close matchup, the same as the scheduled alert
+            val messages = closeMatchups.map { formatScoreMessage(it) }
+
             // Send to all configured messaging services
-            val results = sendToMessagingServices(db, message, "CloseScore")
-            
+            val results = sendToMessagingServices(db, messages, "CloseScore")
+
             call.respond(HttpStatusCode.OK, mapOf(
-                "message" to "Close score alert sent",
-                "data" to message,
+                "message" to "Close score alert sent (${messages.size} of ${matchups.size} matchups)",
+                "data" to messages,
                 "results" to results
             ))
         } catch (e: Exception) {
@@ -221,33 +224,51 @@ data class StandingTeam(
     val rank: String,
     val name: String,
     val record: String,
+    val streak: String?,
     val pointsFor: String,
-    val pointsAgainst: String
+    val pointsAgainst: String,
+    val clinchedPlayoffs: Boolean
 )
 
 // Helper functions
-private fun parseMatchupData(teamsData: String): Pair<Team, Team>? {
+private fun parseMatchups(teamsData: String): List<Pair<Team, Team>> {
     return try {
         val doc = Jsoup.parse(teamsData, "", Parser.xmlParser())
         val currentWeek = doc.select("league > current_week").text().toIntOrNull() ?: 1
 
-        // Scope to one matchup before reading any team fields. A bare select("team")
-        // also matches the nested copy of both teams inside every other matchup, so
-        // teams[0] was the top level team element and its name read as all 29 team
-        // names concatenated together.
-        val matchup = doc.select("league > teams > team > matchups > matchup")
-            .firstOrNull { it.select("week").first()?.text()?.toIntOrNull() == currentWeek }
-            ?: return null
+        // Yahoo lists every matchup once under each of its two teams, so the same
+        // pairing comes back twice and has to be deduped on the team ids.
+        val seen = mutableSetOf<String>()
 
-        val teams = matchup.select("teams > team")
-        if (teams.size < 2) return null
+        doc.select("league > teams > team > matchups > matchup")
+            .toList()
+            .filter { matchupWeek(it) == currentWeek }
+            .mapNotNull { matchup ->
+                // Scope every field read to the matchup's own teams. A bare
+                // select("team") also matches the league level team elements, which
+                // is what turned one team name into all 29 names concatenated.
+                val teams = matchup.select("teams > team")
+                if (teams.size < 2) return@mapNotNull null
 
-        Pair(parseTeam(teams[0]), parseTeam(teams[1]))
+                val key = listOf(teams[0], teams[1])
+                    .map { it.select("team_id").first()?.text().orEmpty() }
+                    .sorted()
+                    .joinToString("-")
+
+                if (!seen.add(key)) return@mapNotNull null
+
+                Pair(parseTeam(teams[0]), parseTeam(teams[1]))
+            }
     } catch (e: Exception) {
         println("[ManualAlert] Error parsing matchup data: ${e.message}")
-        null
+        emptyList()
     }
 }
+
+// team_points also carries a <week>, so read the matchup's own child rather than
+// the first <week> anywhere beneath it.
+private fun matchupWeek(matchup: Element): Int? =
+    matchup.children().toList().firstOrNull { it.tagName() == "week" }?.text()?.toIntOrNull()
 
 private fun parseTeam(team: Element): Team = Team(
     name = team.select("name").first()?.text().orEmpty(),
@@ -257,24 +278,28 @@ private fun parseTeam(team: Element): Team = Team(
     winProbability = (team.select("win_probability").first()?.text()?.toDoubleOrNull() ?: 0.0) * 100
 )
 
-private fun parseScoreData(teamsData: String): Pair<Team, Team>? {
-    // Same as parseMatchupData since they use the same data
-    return parseMatchupData(teamsData)
-}
+private fun isCloseScore(matchup: Pair<Team, Team>): Boolean =
+    abs(matchup.first.winProbability - matchup.second.winProbability) < 40.0
 
 private fun parseStandingsData(standingsData: String): List<StandingTeam> {
     return try {
         val doc = Jsoup.parse(standingsData, "", Parser.xmlParser())
 
-        doc.select("league > standings > teams > team").map { team ->
+        doc.select("league > standings > teams > team").toList().map { team ->
+            val teamStandings = team.select("team_standings")
+            val outcomeTotals = teamStandings.select("outcome_totals")
+            val clinchedPlayoffs = team.select("clinched_playoffs").first()?.text().orEmpty()
+
             StandingTeam(
-                rank = team.select("team_standings > rank").first()?.text().orEmpty(),
+                rank = teamStandings.select("rank").first()?.text().orEmpty(),
                 name = team.select("name").first()?.text().orEmpty(),
-                record = "${team.select("team_standings > outcome_totals > wins").first()?.text().orEmpty()}-" +
-                        "${team.select("team_standings > outcome_totals > losses").first()?.text().orEmpty()}-" +
-                        "${team.select("team_standings > outcome_totals > ties").first()?.text().orEmpty()}",
-                pointsFor = team.select("team_standings > points_for").first()?.text().orEmpty(),
-                pointsAgainst = team.select("team_standings > points_against").first()?.text().orEmpty()
+                record = listOf("wins", "losses", "ties").joinToString("-") {
+                    outcomeTotals.select(it).first()?.text().orEmpty()
+                },
+                streak = parseStreak(teamStandings.select("streak").first()),
+                pointsFor = teamStandings.select("points_for").first()?.text().orEmpty(),
+                pointsAgainst = teamStandings.select("points_against").first()?.text().orEmpty(),
+                clinchedPlayoffs = clinchedPlayoffs.isNotEmpty() && clinchedPlayoffs != "0"
             )
         }.sortedBy { it.rank.toIntOrNull() ?: 999 }
     } catch (e: Exception) {
@@ -283,36 +308,43 @@ private fun parseStandingsData(standingsData: String): List<StandingTeam> {
     }
 }
 
-private fun formatMatchupMessage(matchup: Pair<Team, Team>): String {
-    val (teamOne, teamTwo) = matchup
-    val teamDataBuilder = StringBuilder()
-    teamDataBuilder.append("**${teamOne.name}** vs. **${teamTwo.name}**\\n")
-    teamDataBuilder.append(
-        "**${teamOne.projectedPoints}** (${teamOne.winProbability.toInt()}%) " +
-                "- **${teamTwo.projectedPoints}** (${teamTwo.winProbability.toInt()}%)"
-    )
-    return teamDataBuilder.toString()
+// Yahoo omits the streak until a team has played, so this stays null in preseason.
+private fun parseStreak(streak: Element?): String? {
+    val amount = streak?.select("value")?.first()?.text().orEmpty()
+    if (amount.isEmpty()) return null
+
+    return "$amount${if (streak?.select("type")?.first()?.text() == "win") "W" else "L"}"
 }
 
-private fun formatScoreMessage(score: Pair<Team, Team>, isCloseScore: Boolean): String {
+private fun Double.toPercentage(): String = "${DecimalFormat("#.##").format(this)}%"
+
+private fun formatMatchupMessage(matchup: Pair<Team, Team>): String {
+    val (teamOne, teamTwo) = matchup
+    return "**${teamOne.name}** vs. **${teamTwo.name}**\\n" +
+            "**${teamOne.projectedPoints}** (${teamOne.winProbability.toPercentage()}) " +
+            "- **${teamTwo.projectedPoints}** (${teamTwo.winProbability.toPercentage()})"
+}
+
+private fun formatScoreMessage(score: Pair<Team, Team>): String {
     val (teamOne, teamTwo) = score
     return "**${teamOne.name}** vs. **${teamTwo.name}**\\n" +
             "**${teamOne.points}** (${teamOne.projectedPoints}) - **${teamTwo.points}** (${teamTwo.projectedPoints})"
 }
 
-private fun formatStandingsMessage(standings: List<StandingTeam>): String {
-    val messages = standings.map { team ->
-        "${team.rank}. **${team.name}**\\n" +
-        "Record: **${team.record}**\\n" +
-        "PF: **${team.pointsFor}** | PA: **${team.pointsAgainst}**"
-    }
-    return messages.joinToString("\\n\\n")
+private fun formatStandingsMessage(team: StandingTeam): String {
+    val rank = if (team.rank.isNotEmpty()) "${team.rank}. " else ""
+    val streak = team.streak?.let { " ($it)" }.orEmpty()
+
+    return "$rank**${team.name}**\\n" +
+            "Record: **${team.record}**$streak\\n" +
+            "PF: **${team.pointsFor}** | PA: **${team.pointsAgainst}**" +
+            if (team.clinchedPlayoffs) "\\n**Clinched Playoffs!**" else ""
 }
 
-private fun sendToMessagingServices(db: Db, message: String, alertType: String): Map<String, String> {
+private fun sendToMessagingServices(db: Db, messages: List<String>, alertType: String): Map<String, String> {
     val messagingServices = db.getMessagingServices()
     val results = mutableMapOf<String, String>()
-    
+
     messagingServices.forEach { service ->
         val serviceName = when (service.service) {
             0 -> "Discord"
@@ -320,72 +352,89 @@ private fun sendToMessagingServices(db: Db, message: String, alertType: String):
             2 -> "GroupMe"
             else -> "Unknown"
         }
-        
+
         if (service.url.isBlank()) {
             results[serviceName] = "Error: Empty webhook URL"
             return@forEach
         }
-        
-        try {
-            val response = when (service.service) {
-                0 -> { // Discord
-                    Unirest.post(service.url)
-                        .header("Content-Type", "application/json")
-                        .body("""{"content": "${message.replace("\"", "\\\"").replace("\n", "\\n")}"}""")
-                        .asJson()
-                }
-                1 -> { // Slack
-                    Unirest.post(service.url)
-                        .header("Content-Type", "application/json")
-                        .body("""{"text": "${message.replace("\"", "\\\"").replace("\n", "\\n")}"}""")
-                        .asJson()
-                }
-                2 -> { // GroupMe
-                    Unirest.post("https://api.groupme.com/v3/bots/post")
-                        .header("Content-Type", "application/json")
-                        .body("""{"bot_id": "${service.url}", "text": "${message.replace("\"", "\\\"").replace("\n", "\\n")}"}""")
-                        .asJson()
-                }
-                else -> null
-            }
-            
-            val success = response?.status in 200..299
-            results[serviceName] = if (success) "Success" else "Failed: ${response?.status}"
-            
-            // Save to message history
-            db.saveMessageHistory(MessageHistory(
-                timestamp = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC),
-                messagingService = serviceName,
-                messageType = MessageHistory.TYPE_ALERT,
-                transactionType = null,
-                originalMessage = message,
-                schefterTweet = null,
-                finalContent = message,
-                success = success,
-                responseCode = response?.status,
-                errorMessage = if (!success) "HTTP ${response?.status}" else null,
-                playersInvolved = null
-            ))
-            
-        } catch (e: Exception) {
-            results[serviceName] = "Error: ${e.message}"
-            
-            // Save error to message history
-            db.saveMessageHistory(MessageHistory(
-                timestamp = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC),
-                messagingService = serviceName,
-                messageType = MessageHistory.TYPE_ALERT,
-                transactionType = null,
-                originalMessage = message,
-                schefterTweet = null,
-                finalContent = message,
-                success = false,
-                responseCode = null,
-                errorMessage = e.message,
-                playersInvolved = null
-            ))
+
+        // Each message is its own post, so one bad send does not hide the rest.
+        val failures = messages.mapNotNull { message -> sendMessage(db, service, serviceName, message) }
+
+        results[serviceName] = if (failures.isEmpty()) {
+            "Success (${messages.size} sent)"
+        } else {
+            "Failed ${failures.size}/${messages.size}: ${failures.first()}"
         }
     }
-    
+
     return results
+}
+
+// Returns null on success, or the failure reason.
+private fun sendMessage(
+    db: Db,
+    service: MessagingService,
+    serviceName: String,
+    message: String
+): String? {
+    return try {
+        val response = when (service.service) {
+            0 -> { // Discord
+                Unirest.post(service.url)
+                    .header("Content-Type", "application/json")
+                    .body("""{"content": "${message.replace("\"", "\\\"").replace("\n", "\\n")}"}""")
+                    .asJson()
+            }
+            1 -> { // Slack
+                Unirest.post(service.url)
+                    .header("Content-Type", "application/json")
+                    .body("""{"text": "${message.replace("\"", "\\\"").replace("\n", "\\n")}"}""")
+                    .asJson()
+            }
+            2 -> { // GroupMe
+                Unirest.post("https://api.groupme.com/v3/bots/post")
+                    .header("Content-Type", "application/json")
+                    .body("""{"bot_id": "${service.url}", "text": "${message.replace("\"", "\\\"").replace("\n", "\\n")}"}""")
+                    .asJson()
+            }
+            else -> null
+        }
+
+        val success = response?.status in 200..299
+
+        // Save to message history
+        db.saveMessageHistory(MessageHistory(
+            timestamp = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC),
+            messagingService = serviceName,
+            messageType = MessageHistory.TYPE_ALERT,
+            transactionType = null,
+            originalMessage = message,
+            schefterTweet = null,
+            finalContent = message,
+            success = success,
+            responseCode = response?.status,
+            errorMessage = if (!success) "HTTP ${response?.status}" else null,
+            playersInvolved = null
+        ))
+
+        if (success) null else "HTTP ${response?.status}"
+    } catch (e: Exception) {
+        // Save error to message history
+        db.saveMessageHistory(MessageHistory(
+            timestamp = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC),
+            messagingService = serviceName,
+            messageType = MessageHistory.TYPE_ALERT,
+            transactionType = null,
+            originalMessage = message,
+            schefterTweet = null,
+            finalContent = message,
+            success = false,
+            responseCode = null,
+            errorMessage = e.message,
+            playersInvolved = null
+        ))
+
+        e.message ?: "Unknown error"
+    }
 }
