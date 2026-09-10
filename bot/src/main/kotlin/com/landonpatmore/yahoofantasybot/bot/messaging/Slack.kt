@@ -37,7 +37,9 @@ class Slack(url: String) : MessagingService(url) {
     override fun generateRequest(message: String): RequestBodyEntity =
         Unirest.post(url)
             .header("Content-Type", "application/json")
-            .body("{\"text\" : \"$message\"}")
+            .body(payload(message))
+
+    internal fun payload(message: String): String = jsonBody("text" to message)
 
     override fun cleanMessage(message: String): String =
         AlertFormatting.applyMarkdown(ServiceType.SLACK, message)
