@@ -26,6 +26,8 @@ package com.landonpatmore.yahoofantasybot.bot.messaging
 
 import com.mashape.unirest.http.Unirest
 import com.mashape.unirest.request.body.RequestBodyEntity
+import com.landonpatmore.yahoofantasybot.shared.database.models.MessagingService as ServiceType
+import com.landonpatmore.yahoofantasybot.shared.messaging.AlertFormatting
 
 class GroupMe(botId: String) : MessagingService(botId) {
     override val name = "GroupMe"
@@ -40,5 +42,5 @@ class GroupMe(botId: String) : MessagingService(botId) {
             .body("{\"text\" : \"$message\", \"bot_id\" : \"${url}\"}")
 
     override fun cleanMessage(message: String): String =
-        message.replace("**", "")
+        AlertFormatting.applyMarkdown(ServiceType.GROUP_ME, message)
 }

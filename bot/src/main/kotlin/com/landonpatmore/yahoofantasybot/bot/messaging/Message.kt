@@ -24,11 +24,13 @@
 
 package com.landonpatmore.yahoofantasybot.bot.messaging
 
+import com.landonpatmore.yahoofantasybot.shared.messaging.AlertFormatting
+
 sealed class Message(val title: String, val message: String, val schefterTweet: String? = null) {
-    class Score(message: String) : Message("Score", message)
-    class CloseScore(message: String) : Message("Close Score", message)
-    class MatchUp(message: String) : Message("Match Up", message)
-    class Standings(message: String) : Message("Standings", message)
+    class Score(message: String) : Message(AlertFormatting.SCORE, message)
+    class CloseScore(message: String) : Message(AlertFormatting.CLOSE_SCORE, message)
+    class MatchUp(message: String) : Message(AlertFormatting.MATCH_UP, message)
+    class Standings(message: String) : Message(AlertFormatting.STANDINGS, message)
     class Generic(message: String) : Message("Message", message)
     class Unknown(message: String) : Message("", message)
     sealed class Transaction(title: String, message: String, schefterTweet: String? = null) :
