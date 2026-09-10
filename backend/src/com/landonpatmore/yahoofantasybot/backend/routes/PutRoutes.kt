@@ -27,6 +27,7 @@ package com.landonpatmore.yahoofantasybot.backend.routes
 import com.google.gson.Gson
 import com.landonpatmore.yahoofantasybot.backend.utils.BackendOAuthManager
 import com.landonpatmore.yahoofantasybot.backend.utils.OpenAIHelper
+import com.landonpatmore.yahoofantasybot.shared.messaging.WebhookPayload
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.database.models.Alert
 import com.landonpatmore.yahoofantasybot.shared.database.models.League
@@ -136,7 +137,7 @@ private fun Route.postTestMessage(db: Db) {
                         try {
                             val response = com.mashape.unirest.http.Unirest.post(service.url)
                                 .header("Content-Type", "application/json")
-                                .body("{\"content\" : \"${fullMessage.replace("\"", "\\\\\"\"").replace("\n", "\\n")}\"}")  
+                                .body(WebhookPayload.of("content" to fullMessage))
                                 .asJson()
                             responseCode = response.status
                             success = response.status in 200..299
@@ -150,7 +151,7 @@ private fun Route.postTestMessage(db: Db) {
                         try {
                             val response = com.mashape.unirest.http.Unirest.post(service.url)
                                 .header("Content-Type", "application/json")
-                                .body("{\"text\" : \"${fullMessage.replace("\"", "\\\\\"\"").replace("\n", "\\n")}\"}")
+                                .body(WebhookPayload.of("text" to fullMessage))
                                 .asJson()
                             responseCode = response.status
                             success = response.status in 200..299
@@ -164,7 +165,7 @@ private fun Route.postTestMessage(db: Db) {
                         try {
                             val response = com.mashape.unirest.http.Unirest.post("https://api.groupme.com/v3/bots/post")
                                 .header("Content-Type", "application/json")
-                                .body("{\"bot_id\" : \"${service.url}\", \"text\" : \"${fullMessage.replace("\"", "\\\\\"\"").replace("\n", "\\n")}\"}")
+                                .body(WebhookPayload.of("bot_id" to service.url, "text" to fullMessage))
                                 .asJson()
                             responseCode = response.status
                             success = response.status in 200..299

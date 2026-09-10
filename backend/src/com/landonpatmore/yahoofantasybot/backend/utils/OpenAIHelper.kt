@@ -27,6 +27,7 @@ package com.landonpatmore.yahoofantasybot.backend.utils
 import com.landonpatmore.yahoofantasybot.shared.services.PlayerInfo
 import com.landonpatmore.yahoofantasybot.shared.services.news.NewsBrief
 import com.landonpatmore.yahoofantasybot.shared.services.news.PlayerNewsService
+import com.landonpatmore.yahoofantasybot.shared.services.news.PostStyle
 import com.landonpatmore.yahoofantasybot.shared.services.news.SchefterPrompt
 import com.landonpatmore.yahoofantasybot.shared.services.news.TweetFactChecker
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
@@ -86,8 +87,9 @@ object OpenAIHelper {
                 return null
             }
 
+            val styled = PostStyle.limitToOneEmoji(tweet)
             val attribution = brief.attribution()
-            if (attribution == null) tweet else "$tweet\n_${attribution}_"
+            if (attribution == null) styled else "$styled\n_${attribution}_"
         } catch (e: Exception) {
             println("OpenAIHelper: error: ${e.message}")
             e.printStackTrace()

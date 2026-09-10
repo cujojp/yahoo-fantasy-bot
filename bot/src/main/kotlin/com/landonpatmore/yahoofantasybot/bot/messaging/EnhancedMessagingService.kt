@@ -69,6 +69,8 @@ class EnhancedMessagingService(
         return sendMessageWithHistory(context)
     }
 
+    override fun isConfigured(): Boolean = wrappedService.isConfigured()
+
     override fun cleanMessage(message: String): String {
         return wrappedService.cleanMessage(message)
     }
@@ -95,6 +97,14 @@ class EnhancedMessagingService(
         var responseCode: Int? = null
         var success = false
         var errorMessage: String? = null
+
+        // MessagingService.accept() skips unconfigured services, but this wrapper calls
+        // createMessage() directly and so bypassed that check. With the status now
+        // recorded honestly, every send filed a failure row for services that were never
+        // set up in the first place.
+        if (!wrappedService.isConfigured()) {
+            return null
+        }
 
         try {
             println("EnhancedMessagingService: Sending ${context.messageType} message to $serviceName")

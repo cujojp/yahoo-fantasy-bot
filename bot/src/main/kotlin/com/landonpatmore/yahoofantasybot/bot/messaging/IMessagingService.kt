@@ -34,6 +34,9 @@ interface IMessagingService : Consumer<Pair<String, String>> {
     )
     fun cleanMessage(message: String): String
 
+    /** False when the service has no webhook URL configured, so nothing should be sent. */
+    fun isConfigured(): Boolean
+
     /** Returns the HTTP status of the send, or null if it never got that far. */
     fun sendMessage(message: String): Int?
 
