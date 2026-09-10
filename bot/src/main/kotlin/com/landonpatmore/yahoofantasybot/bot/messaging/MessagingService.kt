@@ -64,7 +64,7 @@ abstract class MessagingService(protected val url: String) : IMessagingService {
      * let the encoder do the escaping.
      */
     protected fun jsonBody(vararg fields: Pair<String, String>): String =
-        WebhookPayload.of(*fields.map { (key, value) -> key to value.replace("\\n", "\n") }.toTypedArray())
+        WebhookPayload.ofEscapedNewlines(*fields)
 
     override fun createMessage(messageInfo: Pair<String, String>, title: Boolean): Int? {
         return try {

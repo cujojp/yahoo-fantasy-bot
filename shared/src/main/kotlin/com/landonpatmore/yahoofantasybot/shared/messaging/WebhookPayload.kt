@@ -40,9 +40,21 @@ import org.json.JSONObject
  * GroupMe.
  */
 object WebhookPayload {
+
+    /** For text that already contains real newlines. */
     fun of(vararg fields: Pair<String, String>): String {
         val json = JSONObject()
         fields.forEach { (key, value) -> json.put(key, value) }
         return json.toString()
     }
+
+    /**
+     * For text assembled with [AlertFormatting.NEW_LINE], which is the two-character
+     * sequence \n rather than a real newline. That convention exists because the old
+     * hand-built payloads relied on those two characters landing in the JSON string as an
+     * escape. Encoding them literally would put a visible \n in the message instead of a
+     * line break, so they are converted back first.
+     */
+    fun ofEscapedNewlines(vararg fields: Pair<String, String>): String =
+        of(*fields.map { (key, value) -> key to value.replace("\\n", "\n") }.toTypedArray())
 }

@@ -387,19 +387,19 @@ private fun sendMessage(
             0 -> { // Discord
                 Unirest.post(service.url)
                     .header("Content-Type", "application/json")
-                    .body(WebhookPayload.of("content" to message))
+                    .body(WebhookPayload.ofEscapedNewlines("content" to message))
                     .asJson()
             }
             1 -> { // Slack
                 Unirest.post(service.url)
                     .header("Content-Type", "application/json")
-                    .body(WebhookPayload.of("text" to message))
+                    .body(WebhookPayload.ofEscapedNewlines("text" to message))
                     .asJson()
             }
             2 -> { // GroupMe
                 Unirest.post("https://api.groupme.com/v3/bots/post")
                     .header("Content-Type", "application/json")
-                    .body(WebhookPayload.of("bot_id" to service.url, "text" to message))
+                    .body(WebhookPayload.ofEscapedNewlines("bot_id" to service.url, "text" to message))
                     .asJson()
             }
             else -> null
