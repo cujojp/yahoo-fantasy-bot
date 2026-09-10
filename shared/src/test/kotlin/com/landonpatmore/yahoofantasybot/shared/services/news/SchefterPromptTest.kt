@@ -19,7 +19,14 @@ class SchefterPromptTest {
         val system = SchefterPrompt.system("ADD/DROP")
         assertTrue(system.contains("Never invent or estimate"))
         assertTrue(system.contains("Never mention a week number unless one is given"))
-        assertTrue(system.contains("If FACTS says (none)"))
+        assertTrue(system.contains("When FACTS says (none)"))
+    }
+
+    @Test
+    fun `the system prompt requires the facts to actually be used`() {
+        val system = SchefterPrompt.system("ADD/DROP")
+        assertTrue(system.contains("build the post around the most newsworthy one"))
+        assertTrue(system.contains("Restating only the roster move when facts were available is a failed post"))
     }
 
     @Test
