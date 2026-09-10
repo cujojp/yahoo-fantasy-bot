@@ -46,20 +46,25 @@ fun Observable<Document>.convertToStandingsMessage(): Observable<Message> =
         val losses = outcomeTotals.select("losses").text()
         val ties = outcomeTotals.select("ties").text()
 
-        var streakType: String? = null
-        var streakAmount: String? = null
-        val streak = teamStandings.select("streak")?.let { streak ->
-            streakType = if (streak.select("type").text() == "win") "W" else "L"
-            streakAmount = streak.select("value").text()
+        // Yahoo omits the streak until a team has played, so this stays null in
+        // preseason rather than rendering an empty "(L)".
+        val streak = teamStandings.select("streak").firstOrNull()?.let { element ->
+            val amount = element.select("value").text()
+            if (amount.isEmpty()) {
+                null
+            } else {
+                "$amount${if (element.select("type").text() == "win") "W" else "L"}"
+            }
         }
 
         val pointsFor = teamStandings.select("points_for").text()
         val pointsAgainst = teamStandings.select("points_against").text()
 
-        val finalMessage = "${if (rank.isNotEmpty()) "$rank. " else ""} ${name.bold()}\\n" +
-                "Record: ${"$wins-$losses-$ties".bold()} ${if (streak != null) "($streakAmount$streakType)" else ""}\\n" +
+        val finalMessage = "${if (rank.isNotEmpty()) "$rank. " else ""}${name.bold()}\\n" +
+                "Record: ${"$wins-$losses-$ties".bold()}${if (streak != null) " ($streak)" else ""}\\n" +
                 "PF: ${pointsFor.bold()} | PA: ${pointsAgainst.bold()}" +
-                if (clinchedPlayoffs) "\\nClinched Playoffs!".bold() else ""
+                // The bold has to sit inside the line, markdown does not span newlines.
+                if (clinchedPlayoffs) "\\n" + "Clinched Playoffs!".bold() else ""
 
         Message.Standings(finalMessage)
     }
