@@ -102,3 +102,25 @@ object TweetFactChecker {
     private fun canonicalizeNumber(value: String): String =
         value.replace(",", "").trimEnd('.')
 }
+
+/**
+ * Trims a generated post down to the house style.
+ *
+ * The prompt asks for at most one emoji and the model keeps adding a second one at the
+ * end. Style rules are the part of a prompt that leaks first, so this enforces the one
+ * rule worth enforcing rather than asking again.
+ */
+object PostStyle {
+    private val EMOJI = Regex("""[\p{So}\p{Cs}]+""")
+
+    /** Keeps the first emoji run and drops the rest. */
+    fun limitToOneEmoji(post: String): String {
+        var seen = false
+        return EMOJI.replace(post) { match ->
+            if (seen) "" else {
+                seen = true
+                match.value
+            }
+        }.replace(Regex(" {2,}"), " ").trimEnd()
+    }
+}

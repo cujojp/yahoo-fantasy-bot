@@ -27,6 +27,7 @@ package com.landonpatmore.yahoofantasybot.bot.services
 import com.landonpatmore.yahoofantasybot.shared.services.PlayerInfo
 import com.landonpatmore.yahoofantasybot.shared.services.news.NewsBrief
 import com.landonpatmore.yahoofantasybot.shared.services.news.PlayerNewsService
+import com.landonpatmore.yahoofantasybot.shared.services.news.PostStyle
 import com.landonpatmore.yahoofantasybot.shared.services.news.SchefterPrompt
 import com.landonpatmore.yahoofantasybot.shared.services.news.TweetFactChecker
 import com.mashape.unirest.http.Unirest
@@ -99,7 +100,7 @@ class OpenAIService(
             throw UnsupportedClaimException(problems)
         }
 
-        GeneratedPost(tweet, brief.attribution())
+        GeneratedPost(PostStyle.limitToOneEmoji(tweet), brief.attribution())
     }
 
     private fun callOpenAI(systemPrompt: String, userPrompt: String): String {
