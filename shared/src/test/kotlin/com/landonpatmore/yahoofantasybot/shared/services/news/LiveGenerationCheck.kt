@@ -56,17 +56,17 @@ class LiveGenerationCheck {
             val brief = news.brief(players)
             val tweet = complete(
                 SchefterPrompt.system(type),
-                SchefterPrompt.user(type, detail, brief)
+                SchefterPrompt.user(type, detail, brief, players)
             )
             val problems = TweetFactChecker.findUnsupportedClaims(
                 tweet,
-                SchefterPrompt.evidence(detail, brief)
+                SchefterPrompt.evidence(detail, brief, players)
             )
 
             println("=========================================")
             println("FACTS GIVEN (${brief.facts.size}):")
             println(brief.toFactsBlock())
-            println("POST: $tweet")
+            println("POST: ${PostStyle.enforce(tweet)}")
             println("ATTRIBUTION: ${brief.attribution()}")
             println("CHECK: ${if (problems.isEmpty()) "clean" else "DROPPED -> $problems"}")
         }

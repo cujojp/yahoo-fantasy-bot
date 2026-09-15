@@ -86,21 +86,21 @@ class OpenAIService(
     ): Single<GeneratedPost> = Single.fromCallable {
         val brief = playerNewsService?.brief(players) ?: NewsBrief(emptyList())
         val systemPrompt = SchefterPrompt.system(transactionType)
-        val userPrompt = SchefterPrompt.user(transactionType, transactionDetails, brief)
+        val userPrompt = SchefterPrompt.user(transactionType, transactionDetails, brief, players)
 
         println("OpenAIService: generating $transactionType post with ${brief.facts.size} sourced fact(s)")
         println("--- USER PROMPT START ---\n$userPrompt\n--- USER PROMPT END ---")
 
         val tweet = callOpenAI(systemPrompt, userPrompt)
 
-        val evidence = SchefterPrompt.evidence(transactionDetails, brief)
+        val evidence = SchefterPrompt.evidence(transactionDetails, brief, players)
         val problems = TweetFactChecker.findUnsupportedClaims(tweet, evidence)
         if (problems.isNotEmpty()) {
             println("OpenAIService: dropping generated post, unsupported claims: ${problems.joinToString("; ")}")
             throw UnsupportedClaimException(problems)
         }
 
-        GeneratedPost(PostStyle.limitToOneEmoji(tweet), brief.attribution())
+        GeneratedPost(PostStyle.enforce(tweet), brief.attribution())
     }
 
     private fun callOpenAI(systemPrompt: String, userPrompt: String): String {

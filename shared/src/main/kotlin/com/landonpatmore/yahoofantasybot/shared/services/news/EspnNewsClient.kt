@@ -48,7 +48,7 @@ import java.time.format.DateTimeParseException
  * per-team injuries route returns an empty object, and the core API's per-athlete
  * injuries route 404s. Do not reach for them again.
  */
-class EspnNewsClient(private val cacheMinutes: Long = DEFAULT_CACHE_MINUTES) {
+open class EspnNewsClient(private val cacheMinutes: Long = DEFAULT_CACHE_MINUTES) {
 
     companion object {
         private const val INJURIES_URL =
@@ -89,7 +89,7 @@ class EspnNewsClient(private val cacheMinutes: Long = DEFAULT_CACHE_MINUTES) {
      * actual comment are kept: a bare "Active" row tells the model nothing and would just
      * dilute the FACTS block.
      */
-    fun injuries(): Map<String, NewsFact> {
+    open fun injuries(): Map<String, NewsFact> {
         injuryCache.freshOrNull()?.let { return it }
 
         val body = HttpJson.getObject(INJURIES_URL) ?: return injuryCache?.value ?: emptyMap()
@@ -139,7 +139,7 @@ class EspnNewsClient(private val cacheMinutes: Long = DEFAULT_CACHE_MINUTES) {
      * last name appearing somewhere in the body would attach the wrong player's news to a
      * transaction, which is the exact failure we are trying to eliminate.
      */
-    fun headlines(): Map<String, List<NewsFact>> {
+    open fun headlines(): Map<String, List<NewsFact>> {
         headlineCache.freshOrNull()?.let { return it }
 
         val body = HttpJson.getObject(NEWS_URL) ?: return headlineCache?.value ?: emptyMap()

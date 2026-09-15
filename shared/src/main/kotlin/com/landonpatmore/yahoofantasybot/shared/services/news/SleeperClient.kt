@@ -34,7 +34,7 @@ import java.time.LocalDateTime
  * authoritative week and season type, and a player table carrying Yahoo's own player id.
  * That id is how we match a Yahoo transaction to a player without guessing at names.
  */
-class SleeperClient(
+open class SleeperClient(
     private val playerMapEnabled: Boolean = System.getenv("SLEEPER_PLAYER_MAP")?.lowercase() != "false"
 ) {
 
@@ -84,7 +84,7 @@ class SleeperClient(
      * Current week and season type straight from Sleeper. Cheap enough to keep fresh, and
      * a useful independent check on Yahoo's `current_week`.
      */
-    fun state(): SeasonState? {
+    open fun state(): SeasonState? {
         stateCache?.let { (state, fetchedAt) ->
             if (java.time.Duration.between(fetchedAt, LocalDateTime.now()).toMinutes() < STATE_CACHE_MINUTES) {
                 return state
@@ -102,7 +102,7 @@ class SleeperClient(
     }
 
     /** Looks up a player by the Yahoo player id carried on the transaction. */
-    fun playerByYahooId(yahooId: String?): SleeperPlayer? {
+    open fun playerByYahooId(yahooId: String?): SleeperPlayer? {
         if (yahooId.isNullOrBlank()) return null
         return players()[yahooId]
     }

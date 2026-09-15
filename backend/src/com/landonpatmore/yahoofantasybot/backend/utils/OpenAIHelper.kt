@@ -72,7 +72,7 @@ object OpenAIHelper {
 
             val brief = playerNewsService?.brief(players) ?: NewsBrief(emptyList())
             val systemPrompt = SchefterPrompt.system("TEST")
-            val userPrompt = SchefterPrompt.user("TEST", originalMessage, brief)
+            val userPrompt = SchefterPrompt.user("TEST", originalMessage, brief, players)
 
             println("OpenAIHelper: generating test post with ${brief.facts.size} sourced fact(s)")
 
@@ -80,14 +80,14 @@ object OpenAIHelper {
 
             val problems = TweetFactChecker.findUnsupportedClaims(
                 tweet,
-                SchefterPrompt.evidence(originalMessage, brief)
+                SchefterPrompt.evidence(originalMessage, brief, players)
             )
             if (problems.isNotEmpty()) {
                 println("OpenAIHelper: dropping test post, unsupported claims: ${problems.joinToString("; ")}")
                 return null
             }
 
-            val styled = PostStyle.limitToOneEmoji(tweet)
+            val styled = PostStyle.enforce(tweet)
             val attribution = brief.attribution()
             if (attribution == null) styled else "$styled\n_${attribution}_"
         } catch (e: Exception) {
