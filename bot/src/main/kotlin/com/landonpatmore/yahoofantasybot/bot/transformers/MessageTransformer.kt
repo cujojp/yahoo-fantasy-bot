@@ -32,8 +32,11 @@ fun Observable<Message>.convertToMessageInfo(): Observable<Pair<String, String>>
     filter {
         it !is Message.Unknown
     }.map {
+        // No emoji on the post itself. The alert title above it already carries one, and a
+        // football in front of every line is the first thing that stops it reading like a
+        // wire report.
         val messageContent = if (it.schefterTweet != null) {
-            "${it.message}\\n\\n🏈 ${it.schefterTweet}"
+            "${it.message}\\n\\n${it.schefterTweet}"
         } else {
             it.message
         }

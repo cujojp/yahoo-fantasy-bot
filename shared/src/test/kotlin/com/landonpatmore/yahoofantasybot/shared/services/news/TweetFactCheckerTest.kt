@@ -77,4 +77,53 @@ class TweetFactCheckerTest {
         val tweet = "Roster move: My Nix in a Box adds Jaxson Dart and drops Alvin Kamara."
         assertEquals(emptyList<String>(), TweetFactChecker.findUnsupportedClaims(tweet, evidence))
     }
+
+    @Test
+    fun `rejects a claim about a player's form, which no source ever gives us`() {
+        val evidence = "Danimals added Kayshon Boutte (Hou, WR)"
+        listOf(
+            "Danimals added red-hot WR Kayshon Boutte.",
+            "Boutte's stock is on the rise.",
+            "Boutte is a league winner.",
+            "Boutte is a must-start this week.",
+            "Boutte has been heating up."
+        ).forEach { post ->
+            assertTrue(
+                TweetFactChecker.findUnsupportedClaims(post, evidence).isNotEmpty(),
+                "should have rejected: $post"
+            )
+        }
+    }
+
+    @Test
+    fun `allows a loud post that only sells the move`() {
+        val evidence = "My Nix in a Box added Jaxson Dart (NYG, QB) and dropped Alvin Kamara (NO, RB)\n" +
+                "Questionable (limited Wednesday with a knee issue)"
+        val post = "🚨 BREAKING: Alvin Kamara was limited in practice Wednesday with a knee " +
+                "issue and is listed as questionable. My Nix in a Box got out first. Ruthless!"
+        assertEquals(emptyList<String>(), TweetFactChecker.findUnsupportedClaims(post, evidence))
+    }
+
+    @Test
+    fun `does not flag ordinary English about the manager`() {
+        val evidence = "Danimals dropped Chris Rodriguez Jr. (Jax, RB)"
+        listOf(
+            "Danimals must have seen something the rest of us did not.",
+            "Danimals must own this one.",
+            "The drop button has been pressed."
+        ).forEach { post ->
+            assertEquals(
+                emptyList<String>(),
+                TweetFactChecker.findUnsupportedClaims(post, evidence),
+                "should have allowed: $post"
+            )
+        }
+    }
+
+    @Test
+    fun `lets a form phrase through when a source actually said it`() {
+        val evidence = "Coach said the offense has been heating up since the bye."
+        val post = "The offense has been heating up, and Danimals is buying in."
+        assertEquals(emptyList<String>(), TweetFactChecker.findUnsupportedClaims(post, evidence))
+    }
 }

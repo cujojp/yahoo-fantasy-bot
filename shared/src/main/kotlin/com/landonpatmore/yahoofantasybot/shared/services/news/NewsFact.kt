@@ -25,8 +25,10 @@
 package com.landonpatmore.yahoofantasybot.shared.services.news
 
 import java.time.Instant
-import java.time.ZoneOffset
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 /**
@@ -42,10 +44,28 @@ data class NewsFact(
     val source: String,
     val published: Instant?
 ) {
-    /** Renders as `[ESPN, 2026-09-09] Alvin Kamara: ...` for the FACTS block. */
-    fun toPromptLine(): String {
-        val stamp = published?.let { DATE.format(it) }
-        val attribution = if (stamp != null) "[$source, $stamp]" else "[$source]"
+    /** The day this was reported, in the league's own timezone. */
+    fun publishedOn(): LocalDate? = published?.atZone(NFL_ZONE)?.toLocalDate()
+
+    /** How many days back this is from [today]. Null when the source gave us no date. */
+    fun ageInDays(today: LocalDate): Long? =
+        publishedOn()?.let { ChronoUnit.DAYS.between(it, today) }
+
+    /**
+     * Renders as `[ESPN, Wed Sep 9, 5 days ago] Alvin Kamara: ...` for the FACTS block.
+     *
+     * The weekday and the age are both here on purpose. The model needs the weekday to
+     * write "reported Wednesday" the way a reporter would, and it needs the age so it
+     * stops writing five-day-old practice news as though it happened this morning. A date
+     * alone gave it neither, because nothing in the prompt said what day it was.
+     */
+    fun toPromptLine(today: LocalDate): String {
+        val on = publishedOn()
+        val attribution = if (on == null) {
+            "[$source, date unknown]"
+        } else {
+            "[$source, ${DAY.format(on)}, ${describeAge(ChronoUnit.DAYS.between(on, today))}]"
+        }
         return "$attribution $playerName: ${trim(text)}"
     }
 
@@ -63,11 +83,23 @@ data class NewsFact(
     companion object {
         private const val MAX_TEXT = 300
 
-        private val DATE: DateTimeFormatter =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneOffset.UTC)
+        /**
+         * The NFL's own clock. UTC rolls over mid-evening on the east coast, which would
+         * file a Sunday night game under Monday and have us calling it the wrong day.
+         */
+        val NFL_ZONE: ZoneId = ZoneId.of("America/New_York")
+
+        private val DAY: DateTimeFormatter =
+            DateTimeFormatter.ofPattern("EEE MMM d", Locale.US)
 
         val SHORT_DATE: DateTimeFormatter =
-            DateTimeFormatter.ofPattern("MMM d", Locale.US).withZone(ZoneOffset.UTC)
+            DateTimeFormatter.ofPattern("MMM d", Locale.US).withZone(NFL_ZONE)
+
+        internal fun describeAge(days: Long): String = when {
+            days <= 0L -> "today"
+            days == 1L -> "yesterday"
+            else -> "$days days ago"
+        }
     }
 }
 
@@ -83,10 +115,14 @@ data class NewsBrief(
 ) {
     val isEmpty: Boolean get() = facts.isEmpty()
 
-    /** The numbered FACTS block handed to the model. */
-    fun toFactsBlock(): String {
+    /**
+     * The numbered FACTS block handed to the model, newest first. The order is the point:
+     * the prompt tells the model to build the post around the first entry, so the freshest
+     * thing we know is the thing it leads with.
+     */
+    fun toFactsBlock(today: LocalDate = LocalDate.now(NewsFact.NFL_ZONE)): String {
         if (facts.isEmpty()) return "(none)"
-        return facts.mapIndexed { index, fact -> "${index + 1}. ${fact.toPromptLine()}" }
+        return facts.mapIndexed { index, fact -> "${index + 1}. ${fact.toPromptLine(today)}" }
             .joinToString("\n")
     }
 

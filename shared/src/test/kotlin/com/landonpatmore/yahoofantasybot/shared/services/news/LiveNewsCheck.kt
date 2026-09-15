@@ -3,6 +3,7 @@ package com.landonpatmore.yahoofantasybot.shared.services.news
 import com.landonpatmore.yahoofantasybot.shared.services.PlayerInfo
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable
+import java.time.LocalDate
 
 /**
  * Hits the live ESPN and Sleeper feeds and prints the brief the model would be given.
@@ -24,6 +25,7 @@ class LiveNewsCheck {
             PlayerInfo("Jakobi Meyers", "Jax", "WR")
         )
 
+        val today = LocalDate.now(NewsFact.NFL_ZONE)
         val espn = EspnNewsClient()
         val injuries = espn.injuries()
         val headlines = espn.headlines()
@@ -32,18 +34,20 @@ class LiveNewsCheck {
         players.forEach { player ->
             val key = PlayerNames.normalize(player.name)
             println("--- ${player.name}")
-            println("    report:   ${injuries[key]?.toPromptLine() ?: "none"}")
-            println("    headline: ${headlines[key]?.firstOrNull()?.toPromptLine() ?: "none"}")
+            println("    report:   ${injuries[key]?.toPromptLine(today) ?: "none"}")
+            println("    headline: ${headlines[key]?.firstOrNull()?.toPromptLine(today) ?: "none"}")
         }
 
         println("sleeper state: ${SleeperClient().state()}")
 
-        val brief = PlayerNewsService().brief(players)
+        val brief = PlayerNewsService().brief(players, today)
         println(
             SchefterPrompt.user(
                 "ADD/DROP",
                 "My Nix in a Box added Jaxson Dart (NYG, QB) and dropped Alvin Kamara (NO, RB)",
-                brief
+                brief,
+                players,
+                today
             )
         )
         println("attribution: ${brief.attribution()}")
