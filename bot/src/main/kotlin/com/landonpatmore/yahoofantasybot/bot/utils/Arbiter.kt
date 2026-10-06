@@ -119,8 +119,11 @@ class Arbiter(
                         }
                     }
                     println("[Arbiter] Transaction check cycle completed")
-                } catch (e: Exception) {
-                    println("[Arbiter] ERROR during transaction check: ${e.message}")
+                } catch (e: Throwable) {
+                    // Throwable, not Exception. An Error such as OutOfMemoryError used to get
+                    // past this, and RxJava then ends the interval for good, so transaction
+                    // checks stopped while the process and scheduled alerts carried on.
+                    println("[Arbiter] ERROR during transaction check: $e")
                     e.printStackTrace()
                 }
             }
@@ -142,8 +145,18 @@ class Arbiter(
     }
 
     private fun setupTransactionsBridge() {
+        // Each transaction already handles its own failure in convertToTransactionMessage.
+        // This is the backstop: an error that reaches here would otherwise end the
+        // subscription, and every later transaction would be dropped without a word while
+        // the check loop kept moving the latest time forward. retry() resubscribes to the
+        // relay so the next batch still gets through.
         val transactions = transactionsBridge.eventStream
             .convertToTransactionMessage(openAIService)
+            .doOnError { error ->
+                println("[Arbiter] ERROR in transaction stream, resubscribing: $error")
+                error.printStackTrace()
+            }
+            .retry()
 
         transactions.subscribe(messageBridge.consumer)
     }
