@@ -34,17 +34,21 @@ import com.landonpatmore.yahoofantasybot.bot.utils.models.YahooApiRequest
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 import com.landonpatmore.yahoofantasybot.shared.services.YahooNewsService
+import com.landonpatmore.yahoofantasybot.shared.services.YahooOAuth
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.jsoup.parser.Parser
 
 class DataRetriever(private val database: Db) : IDataRetriever {
+    // Read and refreshed from the transaction loop and the Quartz alert threads.
+    @Volatile
     private var currentToken: Pair<Long, OAuth2AccessToken>? = null
 
     private val oauthService = ServiceBuilder(EnvVariable.Str.YahooClientId.variable)
         .apiSecret(EnvVariable.Str.YahooClientSecret.variable)
         .callback(OAuthConstants.OOB)
         .defaultScope("fspt-r")
+        .httpClientConfig(YahooOAuth.httpClientConfig())
         .build(YahooApi20.instance())
     private val gameKeyUrl = "/game/${EnvVariable.Str.YahooGameKey.variable}"
     private var leagueUrl: String? = null
@@ -54,6 +58,7 @@ class DataRetriever(private val database: Db) : IDataRetriever {
         return timeElapsed >= expiresIn
     }
 
+    @Synchronized
     override fun refreshExpiredToken() {
         currentToken?.let {
             if (isTokenExpired(it.first, it.second.expiresIn)) {
@@ -142,14 +147,11 @@ class DataRetriever(private val database: Db) : IDataRetriever {
         return grabData(BASE_URL + leagueUrl + TEAMS_MATCHUPS)
     }
     
-    /**
-     * Creates a YahooNewsService using this DataRetriever's OAuth configuration
-     */
-    fun createYahooNewsService(): YahooNewsService? {
-        return currentToken?.let { (_, token) ->
-            YahooNewsService(oauthService, token)
+    override fun createYahooNewsService(): YahooNewsService =
+        YahooNewsService(oauthService) {
+            refreshExpiredToken()
+            currentToken?.second
         }
-    }
 
     companion object {
         private const val SCOREBOARD = "/scoreboard"
