@@ -28,14 +28,15 @@ import com.jakewharton.rxrelay3.PublishRelay
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.functions.Consumer
 import io.reactivex.rxjava3.schedulers.Schedulers
-import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 
-class TransactionsBridge : Bridge<Pair<Long, Document>> {
-    private val dataBridge = PublishRelay.create<Pair<Long, Document>>()
+/** Carries the transactions that still need a post, already filtered by the Arbiter. */
+class TransactionsBridge : Bridge<List<Element>> {
+    private val dataBridge = PublishRelay.create<List<Element>>()
 
-    override val consumer: Consumer<Pair<Long, Document>>
+    override val consumer: Consumer<List<Element>>
         get() = dataBridge
 
-    override val eventStream: Observable<Pair<Long, Document>>
+    override val eventStream: Observable<List<Element>>
         get() = dataBridge.subscribeOn(Schedulers.io())
 }

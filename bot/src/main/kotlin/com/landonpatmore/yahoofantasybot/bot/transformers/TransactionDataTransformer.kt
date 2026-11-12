@@ -29,56 +29,15 @@ import com.landonpatmore.yahoofantasybot.bot.services.OpenAIService
 import com.landonpatmore.yahoofantasybot.bot.utils.bold
 import com.landonpatmore.yahoofantasybot.shared.services.PlayerInfo
 import io.reactivex.rxjava3.core.Observable
-import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
 /**
- * The most transactions one check will post.
- *
- * After an outage the last-checked time is stale, so the first check back treats
- * everything Yahoo returns since then as new, which is up to a few dozen posts each with
- * its own news lookup and OpenAI call. Past this many, only the newest are posted and the
- * rest are logged and skipped. A normal check finds one or two, so this only bites on a
- * catch-up. Overridable without a deploy.
+ * Turns transactions the Arbiter has already chosen to post into messages. Deciding
+ * what is new, and capping a catch-up, happens in TransactionSelector.
  */
-private val CATCH_UP_LIMIT: Int =
-    System.getenv("TRANSACTION_CATCH_UP_LIMIT")?.toIntOrNull()?.takeIf { it > 0 } ?: 5
-
-fun Observable<Pair<Long, Document>>.convertToTransactionMessage(
-    openAIService: OpenAIService? = null,
-    catchUpLimit: Int = CATCH_UP_LIMIT
-): Observable<Message> =
-    flatMap { (checkTime, document) ->
-        println("[TransactionTransformer] Processing transactions document")
-        val transactions = document.select("transaction")
-        println("[TransactionTransformer] Found ${transactions.size} transactions in document")
-
-        val fresh = transactions.filter { transaction ->
-            val timestamp = transaction.timestamp()
-            val isNew = timestamp >= checkTime
-
-            println("[TransactionTransformer] Transaction timestamp: $timestamp, check time: $checkTime, is new: $isNew")
-
-            if (isNew) {
-                val type = transaction.select("type").firstOrNull()?.text() ?: "unknown"
-                println("[TransactionTransformer] New transaction found - Type: $type")
-            }
-
-            isNew
-        }
-
-        // Yahoo lists newest first. Keep the newest few, then post them oldest first so
-        // the chat reads in the order things happened.
-        val posting = fresh.sortedBy { it.timestamp() }.takeLast(catchUpLimit)
-        if (posting.size < fresh.size) {
-            println(
-                "[TransactionTransformer] ${fresh.size} new transactions, over the catch-up limit " +
-                        "of $catchUpLimit. Posting the newest $catchUpLimit and skipping ${fresh.size - posting.size}."
-            )
-        }
-
-        Observable.fromIterable(posting)
-    }.flatMap { transaction ->
+fun Observable<List<Element>>.convertToTransactionMessage(openAIService: OpenAIService? = null): Observable<Message> =
+    flatMap { Observable.fromIterable(it) }
+    .flatMap { transaction ->
         // Contain each transaction's failure to that transaction. An exception here used to
         // terminate the whole stream, after which no transaction was ever posted again.
         // defer() turns anything thrown while building the message into an error we can
@@ -104,8 +63,6 @@ fun Observable<Pair<Long, Document>>.convertToTransactionMessage(
             Observable.empty()
         }
     }
-
-private fun Element.timestamp(): Long = select("timestamp").text().toLongOrNull() ?: 0L
 
 private fun addMessage(event: Element, openAIService: OpenAIService?): Observable<Message> {
     val fantasyTeam = event.select("destination_team_name").text()

@@ -28,6 +28,7 @@ import com.jakewharton.rxrelay3.PublishRelay
 import com.landonpatmore.yahoofantasybot.bot.messaging.Message
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -61,15 +62,19 @@ class TransactionDataTransformerKtTest {
         </transaction>
     """
 
-    /** New enough to pass the time filter, but with no type, so building it throws. */
+    /** No type, so building its message throws. */
     private val malformed = "<transaction><timestamp>200</timestamp></transaction>"
+
+    /** The Arbiter hands the transformer only the transactions it has chosen to post. */
+    private fun batch(vararg bodies: String): List<Element> =
+        transactions(*bodies).getElementsByTag("transaction").toList()
 
     @Test
     fun `a transaction that fails to build is skipped and the rest of the batch still posts`() {
-        val relay = PublishRelay.create<Pair<Long, Document>>()
+        val relay = PublishRelay.create<List<Element>>()
         val observer = relay.convertToTransactionMessage(null).test()
 
-        relay.accept(Pair(100L, transactions(malformed, add("Alvin Kamara"))))
+        relay.accept(batch(malformed, add("Alvin Kamara")))
 
         observer.assertNoErrors()
         assertEquals(1, observer.values().size)
@@ -79,40 +84,12 @@ class TransactionDataTransformerKtTest {
     }
 
     @Test
-    fun `a catch-up posts only the newest transactions, oldest of those first`() {
-        val relay = PublishRelay.create<Pair<Long, Document>>()
-        val observer = relay.convertToTransactionMessage(null, catchUpLimit = 5).test()
-
-        // Newest first, the way Yahoo lists them: eight new since the stale check time,
-        // and one from before it that was already posted.
-        val backlog = (8 downTo 1).map { add("Player $it", timestamp = 1000L + it) } + add("Old Player", timestamp = 50)
-        relay.accept(Pair(100L, transactions(*backlog.toTypedArray())))
-
-        observer.assertNoErrors()
-        val posted = observer.values().map { Regex("Player \\d").find(it.message)!!.value }
-        assertEquals(listOf("Player 4", "Player 5", "Player 6", "Player 7", "Player 8"), posted)
-    }
-
-    @Test
-    fun `a normal check under the limit posts everything new`() {
-        val relay = PublishRelay.create<Pair<Long, Document>>()
-        val observer = relay.convertToTransactionMessage(null, catchUpLimit = 5).test()
-
-        relay.accept(Pair(100L, transactions(add("Jaxson Dart", 300), add("Alvin Kamara", 200), add("Old Player", 50))))
-
-        observer.assertNoErrors()
-        assertEquals(2, observer.values().size)
-        assertTrue(observer.values().first().message.contains("Alvin Kamara"))
-        assertTrue(observer.values().last().message.contains("Jaxson Dart"))
-    }
-
-    @Test
     fun `the stream keeps posting batches after one transaction fails`() {
-        val relay = PublishRelay.create<Pair<Long, Document>>()
+        val relay = PublishRelay.create<List<Element>>()
         val observer = relay.convertToTransactionMessage(null).test()
 
-        relay.accept(Pair(100L, transactions(malformed)))
-        relay.accept(Pair(100L, transactions(add("Jaxson Dart"))))
+        relay.accept(batch(malformed))
+        relay.accept(batch(add("Jaxson Dart")))
 
         observer.assertNoErrors()
         observer.assertNotComplete()

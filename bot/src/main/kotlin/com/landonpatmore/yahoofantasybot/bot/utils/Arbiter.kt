@@ -79,44 +79,12 @@ class Arbiter(
                     val event = dataRetriever.yahooApiRequest(YahooApiRequest.Transactions)
                     println("[Arbiter] Received response from Yahoo API")
                     
-                    val latestTimeChecked = database.getLatestTimeChecked()
-                    println("[Arbiter] Latest time checked: ${latestTimeChecked.time}")
-                    
-                    if (latestTimeChecked.time != -1L) {
-                        val checkTime = if (latestTimeChecked.time == -1L) {
-                            // we say -15 so that we can grab anything right before we got this bad value
-                            System.currentTimeMillis() - 15
-                        } else {
-                            latestTimeChecked.time
-                        } / 1000
-                        
-                        println("[Arbiter] Checking for transactions since: $checkTime")
-                        
-                        // Count transactions for debugging
-                        val transactionCount = event.select("transaction").size
-                        println("[Arbiter] Total transactions in response: $transactionCount")
-                        
-                        if (transactionCount > 0) {
-                            // Store the current time before processing
-                            val processingStartTime = System.currentTimeMillis()
-                            
-                            transactionsBridge.consumer.accept(Pair(checkTime, event))
-                            
-                            // Only update latest time if we actually had transactions to process
-                            // This prevents losing transactions if processing fails
-                            println("[Arbiter] Processing $transactionCount transactions...")
-                            
-                            // TODO: Ideally we should wait for confirmation that transactions were sent
-                            // For now, we'll add a small delay to reduce race condition likelihood
-                            Thread.sleep(2000) // 2 second delay
-                            
-                            database.saveLatestTimeChecked(processingStartTime)
-                            println("[Arbiter] Updated latest check time to: $processingStartTime")
-                        } else {
-                            // No transactions, safe to update the check time
-                            database.saveLatestTimeChecked(System.currentTimeMillis())
-                            println("[Arbiter] No new transactions found, updated check time")
-                        }
+                    val transactions = TransactionSelector.parse(event)
+                    if (transactions == null) {
+                        println("[Arbiter] Response is not a transactions document, skipping this cycle")
+                    } else {
+                        println("[Arbiter] Total transactions in response: ${transactions.size}")
+                        handleTransactions(transactions)
                     }
                     println("[Arbiter] Transaction check cycle completed")
                 } catch (e: Throwable) {
@@ -127,6 +95,42 @@ class Arbiter(
                     e.printStackTrace()
                 }
             }
+    }
+
+    private fun handleTransactions(transactions: List<YahooTransaction>) {
+        val now = System.currentTimeMillis()
+        val legacyCutoff = database.getLatestTimeChecked().time.takeIf { it > 0 }?.div(1000)
+        val selection = TransactionSelector.select(
+            transactions,
+            database.getSeenTransactionKeys(),
+            legacyCutoff,
+            now / 1000
+        )
+
+        if (selection.isFirstRun) {
+            println("[Arbiter] First run with transaction keys: recording ${selection.toSkip.size} existing transactions without posting")
+        } else if (selection.toSkip.isNotEmpty()) {
+            println("[Arbiter] Recording ${selection.toSkip.size} unseen transactions older than the lookback without posting: " +
+                    selection.toSkip.joinToString { "${it.key}@${it.timestamp}" })
+        }
+        if (selection.overCatchUpLimit.isNotEmpty()) {
+            println("[Arbiter] ${selection.overCatchUpLimit.size} catch-up transactions over the limit of " +
+                    "${TransactionSelector.CATCH_UP_LIMIT}, recorded without posting: " +
+                    selection.overCatchUpLimit.joinToString { "${it.key}@${it.timestamp}" })
+        }
+
+        // Recorded before the hand-off: posting is asynchronous and can take several
+        // seconds (news lookup, OpenAI), and the next cycle must not pick these up again.
+        database.markTransactionsSeen(selection.keysToMarkSeen())
+
+        if (selection.toPost.isNotEmpty()) {
+            println("[Arbiter] Posting ${selection.toPost.size} new transactions: " +
+                    selection.toPost.joinToString { "${it.key}@${it.timestamp}" })
+            transactionsBridge.consumer.accept(selection.toPost.map { it.element })
+        }
+
+        // No longer decides what is new; kept for the health check's "last activity".
+        database.saveLatestTimeChecked(now)
     }
 
     private fun sendInitialMessage() {
