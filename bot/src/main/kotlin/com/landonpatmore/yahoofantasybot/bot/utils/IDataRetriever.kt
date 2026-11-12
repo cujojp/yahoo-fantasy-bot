@@ -25,6 +25,7 @@
 package com.landonpatmore.yahoofantasybot.bot.utils
 
 import com.landonpatmore.yahoofantasybot.bot.utils.models.YahooApiRequest
+import com.landonpatmore.yahoofantasybot.shared.services.YahooNewsService
 import org.jsoup.nodes.Document
 
 interface IDataRetriever {
@@ -56,6 +57,12 @@ interface IDataRetriever {
      * Retrieves the Yahoo Game key for the specified game.
      */
     fun retrieveGameKey(): String?
+
+    /**
+     * A YahooNewsService that shares this retriever's OAuth client and always signs with
+     * the current token, refreshing it first when it has expired.
+     */
+    fun createYahooNewsService(): YahooNewsService
 
     /**
      * Makes a request out to Yahoo and returns data.

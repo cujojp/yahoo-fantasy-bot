@@ -30,6 +30,7 @@ import com.github.scribejava.core.model.OAuth2AccessToken
 import com.github.scribejava.core.model.OAuthConstants
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.services.YahooNewsService
+import com.landonpatmore.yahoofantasybot.shared.services.YahooOAuth
 import com.landonpatmore.yahoofantasybot.shared.services.news.PlayerNewsService
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 
@@ -41,6 +42,7 @@ class BackendOAuthManager(private val database: Db) {
     private val oauthService = ServiceBuilder(EnvVariable.Str.YahooClientId.variable)
         .apiSecret(EnvVariable.Str.YahooClientSecret.variable)
         .callback(OAuthConstants.OOB)
+        .httpClientConfig(YahooOAuth.httpClientConfig())
         .build(YahooApi20.instance())
     
     private var cachedToken: Pair<Long, OAuth2AccessToken>? = null

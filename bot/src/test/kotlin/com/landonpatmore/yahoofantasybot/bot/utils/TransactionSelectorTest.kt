@@ -108,6 +108,41 @@ class TransactionSelectorTest {
     }
 
     @Test
+    fun `a catch-up after an outage posts only the newest few, oldest of those first`() {
+        // Eight moves from while the bot was down, all over an hour old.
+        val backlog = parseAll(*(8 downTo 1).map { tx("old.$it", now - 2 * 60 * 60 - (8 - it)) }.toTypedArray())
+
+        val selection = TransactionSelector.select(backlog, initialized, null, now, catchUpLimit = 5)
+
+        assertEquals(listOf("old.4", "old.5", "old.6", "old.7", "old.8"), selection.toPost.map { it.key })
+        assertEquals(setOf("old.1", "old.2", "old.3"), selection.overCatchUpLimit.map { it.key }.toSet())
+        assertTrue(selection.keysToMarkSeen().keys.containsAll(listOf("old.1", "old.2", "old.3")))
+    }
+
+    @Test
+    fun `a waiver run bigger than the catch-up limit is never capped`() {
+        val batch = parseAll(*(1..8).map { tx("470.l.1.w.c.$it", now - 1) }.toTypedArray())
+
+        val selection = TransactionSelector.select(batch, initialized, null, now, catchUpLimit = 5)
+
+        assertEquals(8, selection.toPost.size)
+        assertTrue(selection.overCatchUpLimit.isEmpty())
+    }
+
+    @Test
+    fun `the catch-up limit leaves moves that just happened alone`() {
+        val feed = parseAll(
+            tx("live", now - 30),
+            *(1..3).map { tx("old.$it", now - 3 * 60 * 60 + it) }.toTypedArray()
+        )
+
+        val selection = TransactionSelector.select(feed, initialized, null, now, catchUpLimit = 2)
+
+        assertEquals(listOf("old.2", "old.3", "live"), selection.toPost.map { it.key })
+        assertEquals(listOf("old.1"), selection.overCatchUpLimit.map { it.key })
+    }
+
+    @Test
     fun `a Yahoo error page is not read as an empty league`() {
         val error = xml("<yahoo:error><description>upstream connect error</description></yahoo:error>")
 

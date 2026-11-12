@@ -28,14 +28,32 @@ object TransactionSelector {
      */
     const val LOOKBACK_SECONDS = 24 * 60 * 60L
 
+    /**
+     * An unseen move stamped longer ago than this is a catch-up (the bot was down or
+     * hung when it happened), not something that just happened.
+     */
+    const val CATCH_UP_AGE_SECONDS = 60 * 60L
+
+    /**
+     * The most catch-up moves one check will post. Each post needs its own news lookup
+     * and OpenAI call, so after an outage only the newest are posted and the rest are
+     * recorded without a post. Moves that just happened are never capped: a waiver run
+     * can produce a dozen claims at once, and every one of them should post.
+     * Overridable without a deploy.
+     */
+    val CATCH_UP_LIMIT: Int =
+        System.getenv("TRANSACTION_CATCH_UP_LIMIT")?.toIntOrNull()?.takeIf { it > 0 } ?: 5
+
     data class Selection(
         val toPost: List<YahooTransaction>,
         val toSkip: List<YahooTransaction>,
-        val isFirstRun: Boolean
+        val isFirstRun: Boolean,
+        /** Catch-up moves over the limit, recorded without a post. */
+        val overCatchUpLimit: List<YahooTransaction> = emptyList()
     ) {
         /** Everything to record as seen, including the marker on a first run. */
         fun keysToMarkSeen(): Map<String, Long> {
-            val keys = (toPost + toSkip).associate { it.key to it.timestamp }
+            val keys = (toPost + toSkip + overCatchUpLimit).associate { it.key to it.timestamp }
             return if (isFirstRun) keys + (INITIALIZED_MARKER to 0L) else keys
         }
     }
@@ -68,7 +86,8 @@ object TransactionSelector {
         transactions: List<YahooTransaction>,
         seenKeys: Set<String>,
         legacyCutoffSeconds: Long?,
-        nowSeconds: Long
+        nowSeconds: Long,
+        catchUpLimit: Int = CATCH_UP_LIMIT
     ): Selection {
         val isFirstRun = INITIALIZED_MARKER !in seenKeys
         val unseen = transactions.filter { it.key !in seenKeys }
@@ -85,7 +104,17 @@ object TransactionSelector {
             }
         }
 
+        val (live, catchUp) = toPost.partition { it.timestamp >= nowSeconds - CATCH_UP_AGE_SECONDS }
+        val catchUpNewestFirst = catchUp.sortedByDescending { it.timestamp }
+        val catchUpPosted = catchUpNewestFirst.take(catchUpLimit)
+        val overLimit = catchUpNewestFirst.drop(catchUpLimit)
+
         // Yahoo lists the newest first; post in the order the moves happened.
-        return Selection(toPost.sortedBy { it.timestamp }, toSkip, isFirstRun)
+        return Selection(
+            toPost = (catchUpPosted + live).sortedBy { it.timestamp },
+            toSkip = toSkip,
+            isFirstRun = isFirstRun,
+            overCatchUpLimit = overLimit
+        )
     }
 }

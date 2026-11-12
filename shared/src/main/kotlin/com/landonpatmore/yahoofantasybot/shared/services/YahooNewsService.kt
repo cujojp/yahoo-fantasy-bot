@@ -44,11 +44,19 @@ import java.time.LocalDateTime
  * supporting source rather than the main one. See
  * [com.landonpatmore.yahoofantasybot.shared.services.news.PlayerNewsService] for how it is
  * combined with ESPN and Sleeper.
+ *
+ * The token is read through [accessToken] on every request rather than held. The bot
+ * builds this service once at startup, and Yahoo tokens last an hour, so a token captured
+ * then had every Yahoo lookup failing with a 401 from the second hour on.
  */
 class YahooNewsService(
     private val oauthService: OAuth20Service,
-    private val accessToken: OAuth2AccessToken
+    private val accessToken: () -> OAuth2AccessToken?
 ) {
+
+    /** For short-lived callers, such as one backend request, where the token cannot age. */
+    constructor(oauthService: OAuth20Service, accessToken: OAuth2AccessToken) :
+        this(oauthService, { accessToken })
 
     companion object {
         private const val YAHOO_SPORTS_API_BASE = "https://fantasysports.yahooapis.com/fantasy/v2"
@@ -151,8 +159,9 @@ class YahooNewsService(
     }
 
     private fun makeYahooApiRequest(url: String): Document {
+        val token = accessToken() ?: throw IllegalStateException("no Yahoo token available")
         val request = OAuthRequest(Verb.GET, url)
-        oauthService.signRequest(accessToken, request)
+        oauthService.signRequest(token, request)
         val response = oauthService.execute(request)
         return Jsoup.parse(response.body, "", Parser.xmlParser())
     }

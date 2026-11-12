@@ -30,14 +30,11 @@ import com.landonpatmore.yahoofantasybot.bot.messaging.IMessagingService
 import com.landonpatmore.yahoofantasybot.bot.messaging.Slack
 import com.landonpatmore.yahoofantasybot.bot.messaging.EnhancedMessagingService
 import com.landonpatmore.yahoofantasybot.bot.services.OpenAIService
-import com.landonpatmore.yahoofantasybot.bot.utils.DataRetriever
+import com.landonpatmore.yahoofantasybot.bot.utils.IDataRetriever
 import com.landonpatmore.yahoofantasybot.shared.utils.models.EnvVariable
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessageHistory
-import com.landonpatmore.yahoofantasybot.shared.services.YahooNewsService
 import com.landonpatmore.yahoofantasybot.shared.services.news.PlayerNewsService
-import com.github.scribejava.apis.YahooApi20
-import com.github.scribejava.core.oauth.OAuth20Service
 import org.koin.dsl.module
 
 val messagingModule = module {
@@ -47,28 +44,12 @@ val messagingModule = module {
     single<OpenAIService?> { 
         val apiKey = EnvVariable.Str.OpenAIApiKey.variable
         if (apiKey.isNotEmpty()) {
-            // Create YahooNewsService directly here instead of through DataRetriever
-            val db = get<Db>()
-            val yahooNewsService = try {
-                val tokenData = db.getLatestTokenData()
-                if (tokenData != null) {
-                    val oauthService = com.github.scribejava.core.builder.ServiceBuilder(
-                        EnvVariable.Str.YahooClientId.variable
-                    )
-                        .apiSecret(EnvVariable.Str.YahooClientSecret.variable)
-                        .callback("oob")
-                        .build(YahooApi20.instance())
-                    
-                    YahooNewsService(oauthService, tokenData.second)
-                } else {
-                    println("MessagingModule: No OAuth token available for YahooNewsService")
-                    null
-                }
-            } catch (e: Exception) {
-                println("MessagingModule: Could not create YahooNewsService: ${e.message}")
-                null
-            }
-            
+            // Built through DataRetriever so Yahoo lookups share its OAuth client, with its
+            // timeouts, and sign with its current token. This used to build a separate
+            // client around the token in the database at startup, which expired an hour
+            // later and was never refreshed.
+            val yahooNewsService = get<IDataRetriever>().createYahooNewsService()
+
             // PlayerNewsService is built even when Yahoo is unavailable: ESPN and Sleeper
             // need no auth, so a Yahoo 403 costs us one source rather than all of them.
             OpenAIService(apiKey, PlayerNewsService(yahooNewsService))

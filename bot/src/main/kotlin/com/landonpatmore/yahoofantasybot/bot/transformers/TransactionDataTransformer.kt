@@ -33,26 +33,35 @@ import org.jsoup.nodes.Element
 
 /**
  * Turns transactions the Arbiter has already chosen to post into messages. Deciding
- * what is new happens in TransactionSelector, by transaction_key.
+ * what is new, and capping a catch-up, happens in TransactionSelector.
  */
 fun Observable<List<Element>>.convertToTransactionMessage(openAIService: OpenAIService? = null): Observable<Message> =
     flatMap { Observable.fromIterable(it) }
     .flatMap { transaction ->
-        val transactionType = transaction.select("type").firstOrNull()?.text() ?: "unknown"
-        println("[TransactionTransformer] Processing $transactionType transaction")
+        // Contain each transaction's failure to that transaction. An exception here used to
+        // terminate the whole stream, after which no transaction was ever posted again.
+        // defer() turns anything thrown while building the message into an error we can
+        // drop, so the rest of the batch and every later batch still go out.
+        Observable.defer {
+            val transactionType = transaction.select("type").first().text()
+            println("[TransactionTransformer] Processing $transactionType transaction")
 
-        val baseMessage = when (transactionType) {
-            "add" -> addMessage(transaction, openAIService)
-            "drop" -> dropMessage(transaction, openAIService)
-            "add/drop" -> addDropMessage(transaction, openAIService)
-            "trade" -> tradeMessage(transaction, openAIService)
-            "commish" -> commissionerMessage(openAIService)
-            else -> {
-                println("[TransactionTransformer] Unknown transaction type: $transactionType")
-                Observable.just(Message.Unknown(""))
+            when (transactionType) {
+                "add" -> addMessage(transaction, openAIService)
+                "drop" -> dropMessage(transaction, openAIService)
+                "add/drop" -> addDropMessage(transaction, openAIService)
+                "trade" -> tradeMessage(transaction, openAIService)
+                "commish" -> commissionerMessage(openAIService)
+                else -> {
+                    println("[TransactionTransformer] Unknown transaction type: $transactionType")
+                    Observable.just(Message.Unknown(""))
+                }
             }
+        }.onErrorResumeNext { error ->
+            println("[TransactionTransformer] ERROR processing transaction, skipping it: $error")
+            error.printStackTrace()
+            Observable.empty()
         }
-        baseMessage
     }
 
 private fun addMessage(event: Element, openAIService: OpenAIService?): Observable<Message> {

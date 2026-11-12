@@ -87,8 +87,11 @@ class Arbiter(
                         handleTransactions(transactions)
                     }
                     println("[Arbiter] Transaction check cycle completed")
-                } catch (e: Exception) {
-                    println("[Arbiter] ERROR during transaction check: ${e.message}")
+                } catch (e: Throwable) {
+                    // Throwable, not Exception. An Error such as OutOfMemoryError used to get
+                    // past this, and RxJava then ends the interval for good, so transaction
+                    // checks stopped while the process and scheduled alerts carried on.
+                    println("[Arbiter] ERROR during transaction check: $e")
                     e.printStackTrace()
                 }
             }
@@ -109,6 +112,11 @@ class Arbiter(
         } else if (selection.toSkip.isNotEmpty()) {
             println("[Arbiter] Recording ${selection.toSkip.size} unseen transactions older than the lookback without posting: " +
                     selection.toSkip.joinToString { "${it.key}@${it.timestamp}" })
+        }
+        if (selection.overCatchUpLimit.isNotEmpty()) {
+            println("[Arbiter] ${selection.overCatchUpLimit.size} catch-up transactions over the limit of " +
+                    "${TransactionSelector.CATCH_UP_LIMIT}, recorded without posting: " +
+                    selection.overCatchUpLimit.joinToString { "${it.key}@${it.timestamp}" })
         }
 
         // Recorded before the hand-off: posting is asynchronous and can take several
@@ -141,8 +149,18 @@ class Arbiter(
     }
 
     private fun setupTransactionsBridge() {
+        // Each transaction already handles its own failure in convertToTransactionMessage.
+        // This is the backstop: an error that reaches here would otherwise end the
+        // subscription, and every later transaction would be dropped without a word while
+        // the check loop kept moving the latest time forward. retry() resubscribes to the
+        // relay so the next batch still gets through.
         val transactions = transactionsBridge.eventStream
             .convertToTransactionMessage(openAIService)
+            .doOnError { error ->
+                println("[Arbiter] ERROR in transaction stream, resubscribing: $error")
+                error.printStackTrace()
+            }
+            .retry()
 
         transactions.subscribe(messageBridge.consumer)
     }
