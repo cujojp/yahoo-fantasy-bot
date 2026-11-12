@@ -123,7 +123,7 @@ class Db(
             SchemaUtils.create(
                 LatestTimesTable, StartupMessageTable, TokensTable,
                 MessagingServicesTable, MessageTypeTable, AlertsTable,
-                LeaguesTable, MessageHistoryTable
+                LeaguesTable, MessageHistoryTable, SeenTransactionsTable
             )
         }
     }
@@ -175,6 +175,31 @@ class Db(
 
             LatestTimesTable.insert {
                 it[latestTime] = time
+            }
+        }
+    }
+
+    /**
+     * Gets the keys of every Yahoo transaction the bot has already handled.
+     */
+    fun getSeenTransactionKeys(): Set<String> {
+        return transaction {
+            SeenTransactionsTable.selectAll()
+                .map { it[SeenTransactionsTable.transactionKey] }
+                .toSet()
+        }
+    }
+
+    /**
+     * Records Yahoo transactions as handled, keyed by transaction_key to their
+     * timestamp. Keys that are already recorded are left alone.
+     */
+    fun markTransactionsSeen(transactions: Map<String, Long>) {
+        if (transactions.isEmpty()) return
+        transaction {
+            SeenTransactionsTable.batchInsert(transactions.entries, ignore = true) { (key, time) ->
+                this[SeenTransactionsTable.transactionKey] = key
+                this[SeenTransactionsTable.timestamp] = time
             }
         }
     }
