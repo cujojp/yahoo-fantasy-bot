@@ -44,6 +44,40 @@ object TransactionSelector {
     val CATCH_UP_LIMIT: Int =
         System.getenv("TRANSACTION_CATCH_UP_LIMIT")?.toIntOrNull()?.takeIf { it > 0 } ?: 5
 
+    /**
+     * Stored as "backfill:<transaction_key>" once a backfilled move has been posted, kept
+     * apart from its seen key because a backfilled move was already seen.
+     */
+    const val BACKFILL_PREFIX = "backfill:"
+
+    /**
+     * One-off repair: Yahoo timestamps (seconds), comma-separated, of moves that were lost
+     * and should be posted now. Every move at those timestamps posts once, ignoring the
+     * lookback and the catch-up limit. Remove the variable once they have gone out.
+     */
+    val BACKFILL_TIMESTAMPS: Set<Long> = parseTimestamps(System.getenv("TRANSACTION_BACKFILL_TIMESTAMPS"))
+
+    fun parseTimestamps(raw: String?): Set<Long> =
+        raw?.split(',')?.mapNotNull { it.trim().toLongOrNull() }?.toSet() ?: emptySet()
+
+    /**
+     * The moves at [timestamps] that haven't been backfilled yet. Moves already in
+     * [posting] are left out, since they are going out anyway.
+     */
+    fun selectBackfill(
+        transactions: List<YahooTransaction>,
+        seenKeys: Set<String>,
+        timestamps: Set<Long>,
+        posting: List<YahooTransaction> = emptyList()
+    ): List<YahooTransaction> {
+        if (timestamps.isEmpty()) return emptyList()
+        val postingKeys = posting.map { it.key }.toSet()
+        return transactions
+            .filter { it.timestamp in timestamps }
+            .filter { "$BACKFILL_PREFIX${it.key}" !in seenKeys && it.key !in postingKeys }
+            .sortedBy { it.timestamp }
+    }
+
     data class Selection(
         val toPost: List<YahooTransaction>,
         val toSkip: List<YahooTransaction>,

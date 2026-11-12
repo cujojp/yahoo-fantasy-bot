@@ -143,6 +143,50 @@ class TransactionSelectorTest {
     }
 
     @Test
+    fun `a backfill posts every lost move at the listed timestamps, oldest first`() {
+        // Nov 11: one move at 05:25:52 and eight waiver claims at 09:32:37 UTC, all already
+        // recorded as seen by then, and more than a day old by the time this runs.
+        val lostMove = 1_794_374_752L
+        val waivers = 1_794_389_557L
+        val feed = parseAll(
+            tx("posted", 1_794_397_744L),
+            *(1..8).map { tx("w.c.$it", waivers) }.toTypedArray(),
+            tx("lost", lostMove),
+            tx("unrelated", lostMove - 100)
+        )
+        val seen = initialized + feed.map { it.key }
+        val later = waivers + 2 * LOOKBACK_SECONDS
+
+        val backfill = TransactionSelector.selectBackfill(feed, seen, setOf(lostMove, waivers))
+
+        assertEquals(listOf("lost") + (1..8).map { "w.c.$it" }, backfill.map { it.key })
+        // Nothing about the normal path changes: none of these are posted as new.
+        assertTrue(TransactionSelector.select(feed, seen, null, later).toPost.isEmpty())
+    }
+
+    @Test
+    fun `a backfill posts once and not again after a restart`() {
+        val feed = parseAll(tx("lost", now - 3 * LOOKBACK_SECONDS))
+        val seen = initialized + "lost" + "${TransactionSelector.BACKFILL_PREFIX}lost"
+
+        assertTrue(TransactionSelector.selectBackfill(feed, seen, setOf(now - 3 * LOOKBACK_SECONDS)).isEmpty())
+    }
+
+    @Test
+    fun `a backfill leaves out a move that is already going out as new`() {
+        val feed = parseAll(tx("new", now - 10))
+        val posting = TransactionSelector.select(feed, initialized, null, now).toPost
+
+        assertTrue(TransactionSelector.selectBackfill(feed, initialized, setOf(now - 10), posting).isEmpty())
+    }
+
+    @Test
+    fun `backfill timestamps tolerate spaces and junk`() {
+        assertEquals(setOf(1L, 2L), TransactionSelector.parseTimestamps(" 1, 2 ,x,,"))
+        assertTrue(TransactionSelector.parseTimestamps(null).isEmpty())
+    }
+
+    @Test
     fun `a Yahoo error page is not read as an empty league`() {
         val error = xml("<yahoo:error><description>upstream connect error</description></yahoo:error>")
 

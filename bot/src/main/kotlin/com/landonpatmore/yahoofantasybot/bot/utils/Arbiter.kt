@@ -33,6 +33,9 @@ import com.landonpatmore.yahoofantasybot.bot.utils.models.Configuration
 import com.landonpatmore.yahoofantasybot.bot.utils.models.YahooApiRequest
 import com.landonpatmore.yahoofantasybot.shared.database.Db
 import io.reactivex.rxjava3.core.Observable
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 class Arbiter(
@@ -100,11 +103,18 @@ class Arbiter(
     private fun handleTransactions(transactions: List<YahooTransaction>) {
         val now = System.currentTimeMillis()
         val legacyCutoff = database.getLatestTimeChecked().time.takeIf { it > 0 }?.div(1000)
+        val seenKeys = database.getSeenTransactionKeys()
         val selection = TransactionSelector.select(
             transactions,
-            database.getSeenTransactionKeys(),
+            seenKeys,
             legacyCutoff,
             now / 1000
+        )
+        val backfill = TransactionSelector.selectBackfill(
+            transactions,
+            seenKeys,
+            TransactionSelector.BACKFILL_TIMESTAMPS,
+            selection.toPost
         )
 
         if (selection.isFirstRun) {
@@ -121,7 +131,18 @@ class Arbiter(
 
         // Recorded before the hand-off: posting is asynchronous and can take several
         // seconds (news lookup, OpenAI), and the next cycle must not pick these up again.
-        database.markTransactionsSeen(selection.keysToMarkSeen())
+        database.markTransactionsSeen(
+            selection.keysToMarkSeen() +
+                    backfill.associate { it.key to it.timestamp } +
+                    backfill.associate { "${TransactionSelector.BACKFILL_PREFIX}${it.key}" to it.timestamp }
+        )
+
+        if (backfill.isNotEmpty()) {
+            println("[Arbiter] Backfilling ${backfill.size} lost transactions: " +
+                    backfill.joinToString { "${it.key}@${it.timestamp}" })
+            messageBridge.consumer.accept(Message.Generic(backfillHeader(backfill)))
+            transactionsBridge.consumer.accept(backfill.map { it.element })
+        }
 
         if (selection.toPost.isNotEmpty()) {
             println("[Arbiter] Posting ${selection.toPost.size} new transactions: " +
@@ -131,6 +152,14 @@ class Arbiter(
 
         // No longer decides what is new; kept for the health check's "last activity".
         database.saveLatestTimeChecked(now)
+    }
+
+    /** Says up front that the posts below are late, so they don't read as today's news. */
+    private fun backfillHeader(backfill: List<YahooTransaction>): String {
+        val format = DateTimeFormatter.ofPattern("MMM d").withZone(ZoneId.of("America/New_York"))
+        val days = backfill.map { format.format(Instant.ofEpochSecond(it.timestamp)) }.distinct()
+        val moves = if (backfill.size == 1) "1 move" else "${backfill.size} moves"
+        return "Catching up: $moves from ${days.joinToString(" and ")} didn't post when they happened. Here they are."
     }
 
     private fun sendInitialMessage() {
