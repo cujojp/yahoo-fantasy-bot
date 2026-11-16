@@ -28,4 +28,5 @@ sealed class YahooApiRequest {
     object Transactions : YahooApiRequest()
     object Standings : YahooApiRequest()
     object TeamsData : YahooApiRequest()
+    object Settings : YahooApiRequest()
 }

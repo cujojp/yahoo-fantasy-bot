@@ -33,6 +33,7 @@ class DataRetriever(private val oauthManager: BackendOAuthManager) {
         object Transactions : YahooApiRequest("/transactions")
         object Standings : YahooApiRequest("/standings")
         object TeamsData : YahooApiRequest("/teams/matchups")
+        object Settings : YahooApiRequest("/settings")
     }
     
     fun yahooApiRequest(request: YahooApiRequest): String {

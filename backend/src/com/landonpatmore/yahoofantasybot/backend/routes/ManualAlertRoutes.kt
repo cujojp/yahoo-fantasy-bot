@@ -32,6 +32,9 @@ import com.landonpatmore.yahoofantasybot.shared.database.models.MessageHistory
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessagingService
 import com.landonpatmore.yahoofantasybot.shared.messaging.AlertFormatting
 import com.landonpatmore.yahoofantasybot.shared.messaging.WebhookPayload
+import com.landonpatmore.yahoofantasybot.shared.playoffs.PlayoffPicture
+import com.landonpatmore.yahoofantasybot.shared.playoffs.PlayoffPictureMessage
+import com.landonpatmore.yahoofantasybot.shared.playoffs.PlayoffXml
 import com.mashape.unirest.http.Unirest
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -51,6 +54,7 @@ fun Route.manualAlertRoutes(db: Db) {
         postManualStandings(db)
         postManualScore(db)
         postManualCloseScore(db)
+        postManualPlayoffs(db)
     }
 }
 
@@ -208,6 +212,47 @@ private fun Route.postManualCloseScore(db: Db) {
             ))
         } catch (e: Exception) {
             println("[ManualAlert] Error sending close score alert: ${e.message}")
+            e.printStackTrace()
+            call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
+        }
+    }
+}
+
+private fun Route.postManualPlayoffs(db: Db) {
+    post("/playoffs") {
+        try {
+            println("[ManualAlert] Triggering manual playoff picture alert")
+
+            val oauthManager = BackendOAuthManager(db)
+            val dataRetriever = DataRetriever(oauthManager)
+
+            val settings = PlayoffXml.parseSettings(
+                dataRetriever.yahooApiRequest(DataRetriever.YahooApiRequest.Settings)
+            )
+            if (settings == null) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "This league has no playoff settings"))
+                return@post
+            }
+
+            val standings = PlayoffXml.parseStandings(
+                dataRetriever.yahooApiRequest(DataRetriever.YahooApiRequest.Standings)
+            )
+            if (standings.teams.isEmpty()) {
+                call.respond(HttpStatusCode.InternalServerError, mapOf("error" to "Failed to parse standings data"))
+                return@post
+            }
+
+            // One post for the whole league, the same as the scheduled alert
+            val message = PlayoffPictureMessage.format(PlayoffPicture.build(settings, standings))
+            val results = sendToMessagingServices(db, listOf(message), AlertFormatting.PLAYOFF_PICTURE)
+
+            call.respond(HttpStatusCode.OK, mapOf(
+                "message" to "Playoff picture alert sent",
+                "data" to listOf(message),
+                "results" to results
+            ))
+        } catch (e: Exception) {
+            println("[ManualAlert] Error sending playoff picture alert: ${e.message}")
             e.printStackTrace()
             call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
         }
