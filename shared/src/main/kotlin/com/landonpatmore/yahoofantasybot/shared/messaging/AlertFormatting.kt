@@ -46,6 +46,7 @@ object AlertFormatting {
     const val MATCH_UP = "Match Up"
     const val STANDINGS = "Standings"
     const val PLAYOFF_PICTURE = "Playoff Picture"
+    const val PLAYOFF_ODDS = "Playoff Odds"
 
     /** For example: 📣 **MATCH UP ALERT** followed by a rule. */
     fun title(alertName: String): String =

@@ -27,6 +27,7 @@ package com.landonpatmore.yahoofantasybot.bot.utils
 import com.landonpatmore.yahoofantasybot.bot.bridges.ConfigurationBridge
 import com.landonpatmore.yahoofantasybot.bot.utils.alerts.CloseScoreAlert
 import com.landonpatmore.yahoofantasybot.bot.utils.alerts.MatchUpAlert
+import com.landonpatmore.yahoofantasybot.bot.utils.alerts.PlayoffOddsAlert
 import com.landonpatmore.yahoofantasybot.bot.utils.alerts.PlayoffPictureAlert
 import com.landonpatmore.yahoofantasybot.bot.utils.alerts.ScoreAlert
 import com.landonpatmore.yahoofantasybot.bot.utils.alerts.StandingsAlert
@@ -125,6 +126,7 @@ class AlertsRunner(private val configurationBridge: ConfigurationBridge) {
                     Alert.STANDINGS -> StandingsAlert::class.java
                     Alert.MATCHUP -> MatchUpAlert::class.java
                     Alert.PLAYOFF_PICTURE -> PlayoffPictureAlert::class.java
+                    Alert.PLAYOFF_ODDS -> PlayoffOddsAlert::class.java
                     else -> null
                 }
                 println("[AlertsRunner] Job class for alert ${alert.uuid}: ${jobClass?.simpleName ?: "null"}")

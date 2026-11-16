@@ -6,7 +6,8 @@ import {
     BarChartOutlined, 
     DashboardOutlined,
     FireOutlined,
-    CrownOutlined
+    CrownOutlined,
+    LineChartOutlined
 } from '@ant-design/icons'
 
 class ManualAlerts extends React.Component {
@@ -18,7 +19,8 @@ class ManualAlerts extends React.Component {
                 standings: false,
                 score: false,
                 closescore: false,
-                playoffs: false
+                playoffs: false,
+                playoffodds: false
             }
         }
     }
@@ -77,7 +79,8 @@ class ManualAlerts extends React.Component {
             standings: 'Standings',
             score: 'Score',
             closescore: 'Close Score',
-            playoffs: 'Playoff Picture'
+            playoffs: 'Playoff Picture',
+            playoffodds: 'Playoff Odds'
         }
         return names[type] || type
     }
@@ -180,7 +183,7 @@ class ManualAlerts extends React.Component {
                     <Divider />
 
                     <div>
-                        <h4 style={{ marginBottom: 12 }}>Playoff Picture Alert</h4>
+                        <h4 style={{ marginBottom: 12 }}>Playoff Alerts</h4>
                         <Space wrap>
                             <Button
                                 type="primary"
@@ -191,8 +194,17 @@ class ManualAlerts extends React.Component {
                             >
                                 Send Playoff Picture Alert
                             </Button>
+                            <Button
+                                type="primary"
+                                icon={<LineChartOutlined />}
+                                onClick={() => this.handleAlertTrigger('playoffodds')}
+                                loading={this.state.loading.playoffodds}
+                                size="large"
+                            >
+                                Send Playoff Odds Alert
+                            </Button>
                             <span style={{ color: '#666', fontSize: '12px' }}>
-                                Shows playoff seeds, the cut line, clinched and eliminated teams
+                                Picture shows seeds, the cut line, clinched and eliminated teams. Odds simulates the rest of the season.
                             </span>
                         </Space>
                     </div>

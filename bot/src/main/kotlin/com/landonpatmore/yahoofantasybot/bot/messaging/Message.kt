@@ -32,6 +32,7 @@ sealed class Message(val title: String, val message: String, val schefterTweet: 
     class MatchUp(message: String) : Message(AlertFormatting.MATCH_UP, message)
     class Standings(message: String) : Message(AlertFormatting.STANDINGS, message)
     class PlayoffPicture(message: String) : Message(AlertFormatting.PLAYOFF_PICTURE, message)
+    class PlayoffOdds(message: String) : Message(AlertFormatting.PLAYOFF_ODDS, message)
     class Generic(message: String) : Message("Message", message)
     class Unknown(message: String) : Message("", message)
     sealed class Transaction(title: String, message: String, schefterTweet: String? = null) :

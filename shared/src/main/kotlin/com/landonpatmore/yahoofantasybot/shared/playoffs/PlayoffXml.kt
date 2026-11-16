@@ -60,6 +60,39 @@ object PlayoffXml {
         )
     }
 
+    /**
+     * Every head-to-head game in a /teams/matchups response. Yahoo lists each game under
+     * both of its teams, so the copies are folded into one.
+     */
+    fun parseMatchups(xml: String): List<ScheduledMatchup> {
+        val seen = mutableSetOf<String>()
+
+        return Jsoup.parse(xml, "", Parser.xmlParser())
+            .select("league > teams > team > matchups > matchup")
+            .mapNotNull { matchup ->
+                val week = matchup.childText("week")?.toIntOrNull() ?: return@mapNotNull null
+                val sides = matchup.children().firstOrNull { it.tagName() == "teams" }
+                    ?.children()?.toList()?.filter { it.tagName() == "team" }
+                    ?.map { it.toSide() }
+                    .orEmpty()
+                if (sides.size < 2) return@mapNotNull null
+
+                val key = "$week:" + sides.map { it.teamKey }.sorted().joinToString("-")
+                if (!seen.add(key)) return@mapNotNull null
+
+                ScheduledMatchup(week, matchup.childText("status").orEmpty(), sides[0], sides[1])
+            }
+    }
+
+    private fun Element.toSide() = MatchupSide(
+        teamKey = childText("team_key").orEmpty(),
+        points = child("team_points")?.childText("total")?.toDoubleOrNull(),
+        projectedPoints = child("team_projected_points")?.childText("total")?.toDoubleOrNull()
+    )
+
+    private fun Element.child(tag: String): Element? =
+        children().firstOrNull { it.tagName() == tag }
+
     private fun Element.childText(tag: String): String? =
         children().firstOrNull { it.tagName() == tag }?.text()
 }

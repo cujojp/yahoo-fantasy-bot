@@ -3,44 +3,59 @@ package com.landonpatmore.yahoofantasybot.bot.utils.alerts
 import com.landonpatmore.yahoofantasybot.bot.bridges.MessageBridge
 import com.landonpatmore.yahoofantasybot.bot.messaging.Message
 import com.landonpatmore.yahoofantasybot.bot.utils.models.YahooApiRequest
-import com.landonpatmore.yahoofantasybot.shared.playoffs.PlayoffPicture
-import com.landonpatmore.yahoofantasybot.shared.playoffs.PlayoffPictureMessage
-import com.landonpatmore.yahoofantasybot.shared.playoffs.PlayoffXml
+import com.landonpatmore.yahoofantasybot.shared.playoffs.PlayoffPosts
 import org.koin.core.component.inject
 import org.quartz.JobExecutionContext
 
-/**
- * Posts who is in, who is on the bubble and who is out. Best scheduled for Tuesday,
- * once Monday night has settled the week.
- */
-class PlayoffPictureAlert : BaseAlert() {
-    override val name = "Playoff Picture"
-
+/** Fetches what a playoff post needs from Yahoo and hands the finished post to the chat. */
+abstract class PlayoffAlert : BaseAlert() {
     private val messageBridge: MessageBridge by inject()
+
+    protected abstract fun build(): PlayoffPosts.Result
+
+    protected abstract fun message(body: String): Message
+
+    protected fun xml(request: YahooApiRequest): String = dataRetriever.yahooApiRequest(request).outerHtml()
 
     override fun execute(context: JobExecutionContext?) {
         super.execute(context)
 
         try {
-            val settingsXml = dataRetriever.yahooApiRequest(YahooApiRequest.Settings).outerHtml()
-            val settings = PlayoffXml.parseSettings(settingsXml)
-            if (settings == null) {
-                println("[PlayoffPictureAlert] No playoff settings in the league response, skipping")
-                return
+            when (val result = build()) {
+                is PlayoffPosts.Result.Post -> messageBridge.consumer.accept(message(result.message))
+                is PlayoffPosts.Result.Skip -> println("[$name] Skipping: ${result.reason}")
             }
-
-            val standingsXml = dataRetriever.yahooApiRequest(YahooApiRequest.Standings).outerHtml()
-            val standings = PlayoffXml.parseStandings(standingsXml)
-            if (standings.teams.isEmpty()) {
-                println("[PlayoffPictureAlert] No teams in the standings response, skipping")
-                return
-            }
-
-            val picture = PlayoffPicture.build(settings, standings)
-            messageBridge.consumer.accept(Message.PlayoffPicture(PlayoffPictureMessage.format(picture)))
         } catch (e: Exception) {
-            println("[PlayoffPictureAlert] Failed to post the playoff picture: ${e.message}")
+            println("[$name] Failed to post: ${e.message}")
             e.printStackTrace()
         }
     }
+}
+
+/**
+ * Who is in, who is on the bubble and who is out. Best scheduled for Tuesday, once
+ * Monday night has settled the week.
+ */
+class PlayoffPictureAlert : PlayoffAlert() {
+    override val name = "Playoff Picture"
+
+    override fun build() = PlayoffPosts.picture(
+        xml(YahooApiRequest.Settings),
+        xml(YahooApiRequest.Standings)
+    )
+
+    override fun message(body: String) = Message.PlayoffPicture(body)
+}
+
+/** Each team's chances of making the field and getting a bye, from simulating the rest of the season. */
+class PlayoffOddsAlert : PlayoffAlert() {
+    override val name = "Playoff Odds"
+
+    override fun build() = PlayoffPosts.odds(
+        xml(YahooApiRequest.Settings),
+        xml(YahooApiRequest.Standings),
+        xml(YahooApiRequest.TeamsData)
+    )
+
+    override fun message(body: String) = Message.PlayoffOdds(body)
 }
