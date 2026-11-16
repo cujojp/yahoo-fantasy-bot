@@ -39,5 +39,7 @@ data class Alert(
         const val CLOSE_SCORE = 1
         const val STANDINGS = 2
         const val MATCHUP = 3
+        const val PLAYOFF_PICTURE = 4
+        const val PLAYOFF_ODDS = 5
     }
 }

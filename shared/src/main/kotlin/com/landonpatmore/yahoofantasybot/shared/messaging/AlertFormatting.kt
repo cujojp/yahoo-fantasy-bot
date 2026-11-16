@@ -30,7 +30,7 @@ import com.landonpatmore.yahoofantasybot.shared.database.models.MessagingService
  * How an alert looks once it reaches Discord, Slack or GroupMe.
  *
  * The scheduled alerts and the manual triggers in the web UI both post the same
- * four alerts, and they used to shape them separately, which is how the manual
+ * alerts, and they used to shape them separately, which is how the manual
  * ones ended up with no title and no block quote. Both go through here now.
  *
  * Newlines are a literal backslash and n rather than a real newline. They are
@@ -45,6 +45,8 @@ object AlertFormatting {
     const val CLOSE_SCORE = "Close Score"
     const val MATCH_UP = "Match Up"
     const val STANDINGS = "Standings"
+    const val PLAYOFF_PICTURE = "Playoff Picture"
+    const val PLAYOFF_ODDS = "Playoff Odds"
 
     /** For example: 📣 **MATCH UP ALERT** followed by a rule. */
     fun title(alertName: String): String =

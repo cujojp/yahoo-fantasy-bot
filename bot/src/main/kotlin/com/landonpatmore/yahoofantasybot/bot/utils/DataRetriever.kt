@@ -132,6 +132,7 @@ class DataRetriever(private val database: Db) : IDataRetriever {
             YahooApiRequest.Transactions -> getTransactions()
             YahooApiRequest.Standings -> getStandings()
             YahooApiRequest.TeamsData -> getTeamsData()
+            YahooApiRequest.Settings -> grabData(BASE_URL + leagueUrl + SETTINGS)
         }
     }
 
@@ -157,6 +158,7 @@ class DataRetriever(private val database: Db) : IDataRetriever {
         private const val SCOREBOARD = "/scoreboard"
         private const val TEAMS_MATCHUPS = "/teams/matchups"
         private const val STANDINGS = "/standings"
+        private const val SETTINGS = "/settings"
         private const val TRANSACTIONS = "/transactions"
         private const val BASE_URL =
             "https://fantasysports.yahooapis.com/fantasy/v2"

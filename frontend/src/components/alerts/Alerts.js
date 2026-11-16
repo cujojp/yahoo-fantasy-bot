@@ -48,6 +48,8 @@ class Alerts extends React.Component {
             case 1: return "Close Score"
             case 2: return "Standings"
             case 3: return "Matchup"
+            case 4: return "Playoff Picture"
+            case 5: return "Playoff Odds"
             default: return "N/A"
         }
     }
@@ -218,7 +220,7 @@ class Alerts extends React.Component {
                                     rules={[{ required: true, message: 'Please select alert type' }]}
                                 >
                                     <Select placeholder="Select type">
-                                        {Array.from(Array(4).keys()).map(num => (
+                                        {Array.from(Array(6).keys()).map(num => (
                                             <Option key={num} value={num}>
                                                 {this.mapToAlertName(num)}
                                             </Option>

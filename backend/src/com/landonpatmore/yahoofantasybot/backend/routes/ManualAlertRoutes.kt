@@ -32,11 +32,13 @@ import com.landonpatmore.yahoofantasybot.shared.database.models.MessageHistory
 import com.landonpatmore.yahoofantasybot.shared.database.models.MessagingService
 import com.landonpatmore.yahoofantasybot.shared.messaging.AlertFormatting
 import com.landonpatmore.yahoofantasybot.shared.messaging.WebhookPayload
+import com.landonpatmore.yahoofantasybot.shared.playoffs.PlayoffPosts
 import com.mashape.unirest.http.Unirest
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.util.pipeline.*
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
@@ -51,6 +53,8 @@ fun Route.manualAlertRoutes(db: Db) {
         postManualStandings(db)
         postManualScore(db)
         postManualCloseScore(db)
+        postManualPlayoffs(db)
+        postManualPlayoffOdds(db)
     }
 }
 
@@ -211,6 +215,57 @@ private fun Route.postManualCloseScore(db: Db) {
             e.printStackTrace()
             call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
         }
+    }
+}
+
+private fun Route.postManualPlayoffs(db: Db) {
+    post("/playoffs") {
+        sendPlayoffPost(db, AlertFormatting.PLAYOFF_PICTURE) { dataRetriever ->
+            PlayoffPosts.picture(
+                dataRetriever.yahooApiRequest(DataRetriever.YahooApiRequest.Settings),
+                dataRetriever.yahooApiRequest(DataRetriever.YahooApiRequest.Standings)
+            )
+        }
+    }
+}
+
+private fun Route.postManualPlayoffOdds(db: Db) {
+    post("/playoffodds") {
+        sendPlayoffPost(db, AlertFormatting.PLAYOFF_ODDS) { dataRetriever ->
+            PlayoffPosts.odds(
+                dataRetriever.yahooApiRequest(DataRetriever.YahooApiRequest.Settings),
+                dataRetriever.yahooApiRequest(DataRetriever.YahooApiRequest.Standings),
+                dataRetriever.yahooApiRequest(DataRetriever.YahooApiRequest.TeamsData)
+            )
+        }
+    }
+}
+
+// One post for the whole league, the same as the scheduled alerts.
+private suspend fun PipelineContext<Unit, ApplicationCall>.sendPlayoffPost(
+    db: Db,
+    alertName: String,
+    build: (DataRetriever) -> PlayoffPosts.Result
+) {
+    try {
+        println("[ManualAlert] Triggering manual $alertName alert")
+
+        when (val result = build(DataRetriever(BackendOAuthManager(db)))) {
+            is PlayoffPosts.Result.Skip ->
+                call.respond(HttpStatusCode.UnprocessableEntity, mapOf("error" to result.reason))
+            is PlayoffPosts.Result.Post -> {
+                val results = sendToMessagingServices(db, listOf(result.message), alertName)
+                call.respond(HttpStatusCode.OK, mapOf(
+                    "message" to "$alertName alert sent",
+                    "data" to listOf(result.message),
+                    "results" to results
+                ))
+            }
+        }
+    } catch (e: Exception) {
+        println("[ManualAlert] Error sending $alertName alert: ${e.message}")
+        e.printStackTrace()
+        call.respond(HttpStatusCode.InternalServerError, mapOf("error" to e.message))
     }
 }
 

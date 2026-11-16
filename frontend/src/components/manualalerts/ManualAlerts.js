@@ -5,7 +5,9 @@ import {
     TrophyOutlined, 
     BarChartOutlined, 
     DashboardOutlined,
-    FireOutlined 
+    FireOutlined,
+    CrownOutlined,
+    LineChartOutlined
 } from '@ant-design/icons'
 
 class ManualAlerts extends React.Component {
@@ -16,7 +18,9 @@ class ManualAlerts extends React.Component {
                 matchup: false,
                 standings: false,
                 score: false,
-                closescore: false
+                closescore: false,
+                playoffs: false,
+                playoffodds: false
             }
         }
     }
@@ -74,7 +78,9 @@ class ManualAlerts extends React.Component {
             matchup: 'Matchup',
             standings: 'Standings',
             score: 'Score',
-            closescore: 'Close Score'
+            closescore: 'Close Score',
+            playoffs: 'Playoff Picture',
+            playoffodds: 'Playoff Odds'
         }
         return names[type] || type
     }
@@ -170,6 +176,35 @@ class ManualAlerts extends React.Component {
                             </Button>
                             <span style={{ color: '#666', fontSize: '12px' }}>
                                 Shows current league standings with records
+                            </span>
+                        </Space>
+                    </div>
+
+                    <Divider />
+
+                    <div>
+                        <h4 style={{ marginBottom: 12 }}>Playoff Alerts</h4>
+                        <Space wrap>
+                            <Button
+                                type="primary"
+                                icon={<CrownOutlined />}
+                                onClick={() => this.handleAlertTrigger('playoffs')}
+                                loading={this.state.loading.playoffs}
+                                size="large"
+                            >
+                                Send Playoff Picture Alert
+                            </Button>
+                            <Button
+                                type="primary"
+                                icon={<LineChartOutlined />}
+                                onClick={() => this.handleAlertTrigger('playoffodds')}
+                                loading={this.state.loading.playoffodds}
+                                size="large"
+                            >
+                                Send Playoff Odds Alert
+                            </Button>
+                            <span style={{ color: '#666', fontSize: '12px' }}>
+                                Picture shows seeds, the cut line, clinched and eliminated teams. Odds simulates the rest of the season.
                             </span>
                         </Space>
                     </div>
